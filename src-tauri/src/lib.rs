@@ -3,10 +3,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuBuilder, MenuItem, MenuItemBuilder, SubmenuBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager, State, WindowEvent,
 };
+use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_updater::UpdaterExt;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Note {
@@ -164,6 +167,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .setup(|app| {
             let settings_state: State<AppState> = app.state();
@@ -181,6 +186,79 @@ pub fn run() {
                     }
                 }
             }
+
+            let about = MenuItemBuilder::with_id("about", "About ScratchPad").build(app)?;
+            let check_updates = MenuItemBuilder::with_id("check_updates", "Check for Updates...").build(app)?;
+            let app_submenu = SubmenuBuilder::new(app, "ScratchPad")
+                .item(&about)
+                .item(&check_updates)
+                .separator()
+                .quit()
+                .build()?;
+
+            let file_submenu = SubmenuBuilder::new(app, "File")
+                .close_window()
+                .build()?;
+
+            let edit_submenu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
+            let app_menu = MenuBuilder::new(app)
+                .item(&app_submenu)
+                .item(&file_submenu)
+                .item(&edit_submenu)
+                .build()?;
+
+            app.set_menu(app_menu)?;
+
+            app.on_menu_event(|app, event| {
+                if event.id() == "about" {
+                    app.dialog()
+                        .message("ScratchPad\nVersion 0.1.0\n\nA lightweight tabbed notepad.\n\nhttps://dima0.com")
+                        .title("About ScratchPad")
+                        .blocking_show();
+                }
+                if event.id() == "check_updates" {
+                    let handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let Ok(updater) = handle.updater() else {
+                            let _ = handle.dialog()
+                                .message("Updater is not configured.")
+                                .title("Error")
+                                .blocking_show();
+                            return;
+                        };
+                        match updater.check().await {
+                            Ok(Some(update)) => {
+                                let _ = handle.dialog()
+                                    .message(format!("Version {} is available. Download now?", update.version))
+                                    .title("Update Available")
+                                    .blocking_show();
+
+                            }
+                            Ok(None) => {
+                                let _ = handle.dialog()
+                                    .message("You're on the latest version.")
+                                    .title("No Updates")
+                                    .blocking_show();
+                            }
+                            Err(e) => {
+                                let _ = handle.dialog()
+                                    .message(format!("Failed to check for updates: {}", e))
+                                    .title("Error")
+                                    .blocking_show();
+                            }
+                        }
+                    });
+                }
+            });
 
             let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -217,6 +295,16 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            let shortcut = Shortcut::new(Some(Modifiers::META | Modifiers::SHIFT), Code::KeyS);
+            app.global_shortcut().on_shortcut(shortcut, |app, _shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            })?;
 
             let app_handle = app.handle().clone();
             if let Some(window) = app.get_webview_window("main") {

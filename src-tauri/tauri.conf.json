@@ -27,5 +27,13 @@
     "icon": [
       "icons/icon.png"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Dimagithub/scratchpad/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
+    }
   }
 }
