@@ -1,0 +1,31 @@
+{
+  "productName": "ScratchPad",
+  "version": "0.1.0",
+  "identifier": "com.scratchpad.desktop",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "frontendDist": "../src-tauri/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "ScratchPad",
+        "width": 700,
+        "height": 500,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  }
+}
