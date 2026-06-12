@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+// import { listen } from "@tauri-apps/api/event"; // uncommented in Task 6
 
 interface Note {
   id: string;
   title: string;
   content: string;
   created_at: number;
+  private: boolean;
 }
 
 export default function App() {
@@ -18,6 +20,9 @@ export default function App() {
   const [renameInput, setRenameInput] = useState("");
   const renameRef = useRef<HTMLInputElement>(null);
   const contentLoaded = useRef(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [opacity, setOpacity] = useState(1.0);
+  const activeIdRef = useRef<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -33,6 +38,19 @@ export default function App() {
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  useEffect(() => {
+    invoke<{ theme: string; always_on_top: boolean; opacity: number }>("get_settings")
+      .then((s) => {
+        setTheme(s.theme as "dark" | "light");
+        setOpacity(s.opacity);
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!loaded) return;
@@ -134,6 +152,8 @@ export default function App() {
 
   const activeNote = notes.find((n) => n.id === activeId);
 
+  const styles = useMemo(() => getStyles(theme, opacity), [theme, opacity]);
+
   return (
     <div style={styles.root}>
       <div style={styles.tabBar}>
@@ -214,122 +234,128 @@ export default function App() {
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  root: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    background: "#1e1e1e",
-    color: "#d4d4d4",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: 13,
-  },
-  tabBar: {
-    display: "flex",
-    background: "#2d2d30",
-    borderBottom: "1px solid #474747",
-    minHeight: 36,
-    flexShrink: 0,
-  },
-  tabs: {
-    display: "flex",
-    flex: 1,
-    overflowX: "auto",
-    overflowY: "hidden",
-    minHeight: 36,
-  },
-  tab: {
-    display: "flex",
-    alignItems: "center",
-    padding: "0 10px",
-    borderRight: "1px solid #3c3c3c",
-    cursor: "pointer",
-    minWidth: 120,
-    maxWidth: 180,
-    height: 35,
-    background: "#2d2d2d",
-    gap: 6,
-    flexShrink: 0,
-  },
-  tabActive: {
-    background: "#1e1e1e",
-    borderBottom: "2px solid #007acc",
-  },
-  tabTitle: {
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    fontSize: 12,
-    cursor: "default",
-  },
-  renameInput: {
-    flex: 1,
-    background: "#3c3c3c",
-    border: "1px solid #007acc",
-    borderRadius: 2,
-    color: "#d4d4d4",
-    fontSize: 12,
-    padding: "1px 4px",
-    outline: "none",
-    fontFamily: "inherit",
-  },
-  tabClose: {
-    background: "transparent",
-    border: "none",
-    color: "#888",
-    cursor: "pointer",
-    fontSize: 14,
-    padding: "0 2px",
-    lineHeight: 1,
-    borderRadius: 3,
-  },
-  addButton: {
-    background: "transparent",
-    border: "none",
-    color: "#ccc",
-    cursor: "pointer",
-    fontSize: 20,
-    fontWeight: 700,
-    padding: "0 14px",
-    flexShrink: 0,
-    minHeight: 36,
-  },
-  editor: {
-    flex: 1,
-    display: "flex",
-    overflow: "hidden",
-  },
-  textarea: {
-    width: "100%",
-    height: "100%",
-    background: "#1e1e1e",
-    color: "#d4d4d4",
-    border: "none",
-    padding: 16,
-    fontSize: 14,
-    lineHeight: 1.6,
-    fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', monospace",
-    resize: "none",
-    outline: "none",
-  },
-  empty: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#666",
-    gap: 12,
-  },
-  emptyButton: {
-    padding: "8px 16px",
-    background: "#0e639c",
-    color: "white",
-    border: "none",
-    borderRadius: 3,
-    cursor: "pointer",
-    fontSize: 13,
-  },
-};
+function getStyles(theme: "dark" | "light", opacity: number): Record<string, React.CSSProperties> {
+  const dark = theme === "dark";
+  const bg = dark ? `rgba(30, 30, 30, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+  const tabBarBg = dark ? `rgba(45, 45, 48, ${opacity})` : `rgba(240, 240, 240, ${opacity})`;
+  const tabBg = dark ? `rgba(45, 45, 45, ${opacity})` : `rgba(228, 228, 228, ${opacity})`;
+  return {
+    root: {
+      width: "100%",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      background: bg,
+      color: dark ? "#d4d4d4" : "#1a1a1a",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontSize: 13,
+    },
+    tabBar: {
+      display: "flex",
+      background: tabBarBg,
+      borderBottom: `1px solid ${dark ? "#474747" : "#d0d0d0"}`,
+      minHeight: 36,
+      flexShrink: 0,
+    },
+    tabs: {
+      display: "flex",
+      flex: 1,
+      overflowX: "auto",
+      overflowY: "hidden",
+      minHeight: 36,
+    },
+    tab: {
+      display: "flex",
+      alignItems: "center",
+      padding: "0 10px",
+      borderRight: `1px solid ${dark ? "#3c3c3c" : "#d0d0d0"}`,
+      cursor: "pointer",
+      minWidth: 120,
+      maxWidth: 180,
+      height: 35,
+      background: tabBg,
+      gap: 6,
+      flexShrink: 0,
+    },
+    tabActive: {
+      background: bg,
+      borderBottom: `2px solid ${dark ? "#007acc" : "#0078d4"}`,
+    },
+    tabTitle: {
+      flex: 1,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      fontSize: 12,
+      cursor: "default",
+    },
+    renameInput: {
+      flex: 1,
+      background: dark ? "#3c3c3c" : "#ffffff",
+      border: `1px solid ${dark ? "#007acc" : "#0078d4"}`,
+      borderRadius: 2,
+      color: dark ? "#d4d4d4" : "#1a1a1a",
+      fontSize: 12,
+      padding: "1px 4px",
+      outline: "none",
+      fontFamily: "inherit",
+    },
+    tabClose: {
+      background: "transparent",
+      border: "none",
+      color: dark ? "#888" : "#666",
+      cursor: "pointer",
+      fontSize: 14,
+      padding: "0 2px",
+      lineHeight: 1,
+      borderRadius: 3,
+    },
+    addButton: {
+      background: "transparent",
+      border: "none",
+      color: dark ? "#ccc" : "#444",
+      cursor: "pointer",
+      fontSize: 20,
+      fontWeight: 700,
+      padding: "0 14px",
+      flexShrink: 0,
+      minHeight: 36,
+    },
+    editor: {
+      flex: 1,
+      display: "flex",
+      overflow: "hidden",
+    },
+    textarea: {
+      width: "100%",
+      height: "100%",
+      background: bg,
+      color: dark ? "#d4d4d4" : "#1a1a1a",
+      border: "none",
+      padding: 16,
+      fontSize: 14,
+      lineHeight: 1.6,
+      fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', monospace",
+      resize: "none",
+      outline: "none",
+    },
+    empty: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      color: dark ? "#666" : "#999",
+      gap: 12,
+    },
+    emptyButton: {
+      padding: "8px 16px",
+      background: dark ? "#0e639c" : "#0078d4",
+      color: "white",
+      border: "none",
+      borderRadius: 3,
+      cursor: "pointer",
+      fontSize: 13,
+    },
+  };
+}
