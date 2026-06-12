@@ -83,20 +83,13 @@
     }
   }
 
-  // The __TAURI_INTERNALS__ object is what @tauri-apps/api reads.
-  // invoke(cmd, args, successCbId, errorCbId) — success/error are callback IDs.
+  // Tauri 2: __TAURI_INTERNALS__.invoke(cmd, args, options) must return a Promise.
+  // The API layer does: return window.__TAURI_INTERNALS__.invoke(cmd, args, options)
+  // transformCallback is still needed — listen() uses it to store event handlers.
   window.__TAURI_INTERNALS__ = {
     transformCallback: transformCallback,
-    invoke: function (cmd, args, successCbId, errorCbId) {
-      dispatch(cmd, args)
-        .then(function (result) {
-          var cb = callbackRegistry[successCbId];
-          if (cb) cb(result);
-        })
-        .catch(function (err) {
-          var cb = callbackRegistry[errorCbId];
-          if (cb) cb(String(err));
-        });
+    invoke: function (cmd, args) {
+      return dispatch(cmd, args);
     },
   };
 
