@@ -225,6 +225,41 @@ pub fn run() {
                 }
             }
 
+            let initial_aot = settings.always_on_top;
+            let initial_opacity = settings.opacity;
+            let initial_theme = settings.theme.clone();
+            drop(settings);
+
+            let aot_item = CheckMenuItemBuilder::with_id("always_on_top", "Always on Top")
+                .checked(initial_aot)
+                .build(app)?;
+
+            let op100 = CheckMenuItemBuilder::with_id("opacity_100", "100%").checked(initial_opacity == 1.0).build(app)?;
+            let op75  = CheckMenuItemBuilder::with_id("opacity_75",  "75%") .checked((initial_opacity - 0.75).abs() < 0.01).build(app)?;
+            let op50  = CheckMenuItemBuilder::with_id("opacity_50",  "50%") .checked((initial_opacity - 0.5).abs()  < 0.01).build(app)?;
+            let op25  = CheckMenuItemBuilder::with_id("opacity_25",  "25%") .checked((initial_opacity - 0.25).abs() < 0.01).build(app)?;
+            let opacity_submenu = SubmenuBuilder::new(app, "Opacity")
+                .item(&op100).item(&op75).item(&op50).item(&op25)
+                .build()?;
+
+            let th_dark  = CheckMenuItemBuilder::with_id("theme_dark",  "Dark") .checked(initial_theme == "dark") .build(app)?;
+            let th_light = CheckMenuItemBuilder::with_id("theme_light", "Light").checked(initial_theme == "light").build(app)?;
+            let theme_submenu = SubmenuBuilder::new(app, "Theme")
+                .item(&th_dark).item(&th_light)
+                .build()?;
+
+            let privacy_item = MenuItemBuilder::with_id("toggle_privacy", "Toggle Privacy for Current Note").build(app)?;
+
+            let view_submenu = SubmenuBuilder::new(app, "View")
+                .item(&aot_item)
+                .separator()
+                .item(&opacity_submenu)
+                .separator()
+                .item(&theme_submenu)
+                .separator()
+                .item(&privacy_item)
+                .build()?;
+
             let about = MenuItemBuilder::with_id("about", "About ScratchPad").build(app)?;
             let check_updates = MenuItemBuilder::with_id("check_updates", "Check for Updates...").build(app)?;
             let app_submenu = SubmenuBuilder::new(app, "ScratchPad")
@@ -254,10 +289,15 @@ pub fn run() {
             let app_menu = MenuBuilder::new(app)
                 .item(&app_submenu)
                 .item(&file_submenu)
+                .item(&view_submenu)
                 .item(&edit_submenu)
                 .build()?;
 
             app.set_menu(app_menu)?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_always_on_top(initial_aot);
+            }
 
             app.on_menu_event(|app, event| {
                 if event.id() == "about" {
