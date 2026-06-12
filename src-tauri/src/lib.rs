@@ -3,11 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuBuilder, MenuItem, MenuItemBuilder, SubmenuBuilder},
+    menu::{CheckMenuItem, CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, SubmenuBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, State, WindowEvent,
+    Emitter, Manager, State, WindowEvent,
 };
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_shell::ShellExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_updater::UpdaterExt;
 
@@ -17,24 +18,40 @@ pub struct Note {
     pub title: String,
     pub content: String,
     pub created_at: u64,
+    #[serde(default)]
+    pub private: bool,
 }
+
+fn default_opacity() -> f64 { 1.0 }
+fn default_theme() -> String { "dark".to_string() }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
     pub storage_path: String,
+    #[serde(default)]
+    pub always_on_top: bool,
+    #[serde(default = "default_opacity")]
+    pub opacity: f64,
+    #[serde(default = "default_theme")]
+    pub theme: String,
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
             storage_path: Self::default_storage_path(),
+            always_on_top: false,
+            opacity: 1.0,
+            theme: "dark".to_string(),
         }
     }
 }
 
 impl AppSettings {
     fn default_storage_path() -> String {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
         format!("{}/ScratchPad/notes.json", home)
     }
 }
@@ -119,6 +136,7 @@ fn create_new_note(settings: State<AppState>) -> Result<Note, String> {
         title: format!("Notepad {}", chrono::Local::now().format("%b %-d, %H:%M")),
         content: String::new(),
         created_at: now,
+        private: false,
     };
 
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
@@ -162,6 +180,22 @@ fn rename_note(note_id: String, new_title: String, settings: State<AppState>) ->
     Ok(())
 }
 
+fn save_settings(settings: &AppSettings) {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+    let path = format!("{}/ScratchPad/settings.json", home);
+    if let Ok(json) = serde_json::to_string_pretty(settings) {
+        let _ = fs::write(&path, json);
+    }
+}
+
+#[tauri::command]
+fn get_settings(settings: State<AppState>) -> Result<AppSettings, String> {
+    let s = settings.settings.lock().map_err(|e| e.to_string())?;
+    Ok(s.clone())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -176,7 +210,9 @@ pub fn run() {
 
             let settings_path = format!(
                 "{}/ScratchPad/settings.json",
-                std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+                std::env::var("HOME")
+                    .or_else(|_| std::env::var("USERPROFILE"))
+                    .unwrap_or_else(|_| ".".to_string())
             );
 
             if std::path::Path::new(&settings_path).exists() {
@@ -196,7 +232,10 @@ pub fn run() {
                 .quit()
                 .build()?;
 
+            let open_notes_folder = MenuItemBuilder::with_id("open_notes_folder", "Open Notes Folder").build(app)?;
             let file_submenu = SubmenuBuilder::new(app, "File")
+                .item(&open_notes_folder)
+                .separator()
                 .close_window()
                 .build()?;
 
@@ -224,6 +263,14 @@ pub fn run() {
                         .message("ScratchPad\nVersion 0.1.0\n\nA lightweight tabbed notepad.\n\nhttps://dima0.com")
                         .title("About ScratchPad")
                         .blocking_show();
+                }
+                if event.id() == "open_notes_folder" {
+                    let folder = std::env::var("HOME")
+                        .or_else(|_| std::env::var("USERPROFILE"))
+                        .map(|h| format!("{}/ScratchPad", h))
+                        .unwrap_or_else(|_| "./ScratchPad".to_string());
+                    let _ = std::fs::create_dir_all(&folder);
+                    let _ = app.shell().open(&folder, None);
                 }
                 if event.id() == "check_updates" {
                     let handle = app.clone();
@@ -272,6 +319,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
@@ -289,6 +337,7 @@ pub fn run() {
                     } = event
                     {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
@@ -296,22 +345,29 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            #[cfg(target_os = "macos")]
             let shortcut = Shortcut::new(Some(Modifiers::META | Modifiers::SHIFT), Code::KeyS);
-            app.global_shortcut().on_shortcut(shortcut, |app, _shortcut, event| {
+            #[cfg(not(target_os = "macos"))]
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyS);
+            let _ = app.global_shortcut().on_shortcut(shortcut, |app, _shortcut, event| {
                 if event.state() == ShortcutState::Pressed {
                     if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.unminimize();
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
                 }
-            })?;
+            });
 
             let app_handle = app.handle().clone();
             if let Some(window) = app.get_webview_window("main") {
                 window.on_window_event(move |event| {
                     if let WindowEvent::CloseRequested { api, .. } = event {
                         api.prevent_close();
+                        #[cfg(target_os = "macos")]
                         let _ = app_handle.get_webview_window("main").map(|w| w.minimize());
+                        #[cfg(not(target_os = "macos"))]
+                        let _ = app_handle.get_webview_window("main").map(|w| w.hide());
                     }
                 });
             }
@@ -325,6 +381,7 @@ pub fn run() {
             purge_all_notes,
             create_new_note,
             rename_note,
+            get_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
