@@ -291,7 +291,7 @@ function getStyles(theme: "dark" | "light", opacity: number): Record<string, Rea
     },
     renameInput: {
       flex: 1,
-      background: dark ? "#3c3c3c" : "#ffffff",
+      background: dark ? `rgba(60, 60, 60, ${opacity})` : `rgba(255, 255, 255, ${opacity})`,
       border: `1px solid ${dark ? "#007acc" : "#0078d4"}`,
       borderRadius: 2,
       color: dark ? "#d4d4d4" : "#1a1a1a",
