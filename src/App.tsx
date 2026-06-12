@@ -184,13 +184,15 @@ export default function App() {
   const styles = useMemo(() => getStyles(theme, opacity), [theme, opacity]);
 
   return (
-    <div style={styles.root}>
+    <div style={styles.root} data-testid="app-root">
       <div style={styles.tabBar}>
         <div style={styles.tabs}>
           {notes.map((note) => (
             <div
               key={note.id}
               onClick={() => setActiveId(note.id)}
+              data-testid="tab"
+              data-active={note.id === activeId ? "true" : "false"}
               style={{
                 ...styles.tab,
                 ...(note.id === activeId ? styles.tabActive : {}),
@@ -220,6 +222,7 @@ export default function App() {
                     startRenaming(note.id, note.title);
                   }}
                   style={styles.tabTitle}
+                  data-testid="tab-title"
                 >
                   {note.title}
                 </span>
@@ -230,13 +233,14 @@ export default function App() {
                   handleClose(note.id);
                 }}
                 style={styles.tabClose}
+                data-testid="tab-close"
               >
                 ×
               </button>
             </div>
           ))}
         </div>
-        <button onClick={handleAdd} style={styles.addButton}>
+        <button onClick={handleAdd} style={styles.addButton} data-testid="add-tab">
           +
         </button>
       </div>
@@ -249,6 +253,7 @@ export default function App() {
               readOnly
               style={styles.textarea}
               spellCheck={false}
+              data-testid="editor"
             />
           ) : (
             <textarea
@@ -257,10 +262,11 @@ export default function App() {
               placeholder="Start typing..."
               style={styles.textarea}
               spellCheck={false}
+              data-testid="editor"
             />
           )
         ) : (
-          <div style={styles.empty}>
+          <div style={styles.empty} data-testid="empty-state">
             <p>No notepads open</p>
             <button onClick={handleAdd} style={styles.emptyButton}>
               + New Notepad
