@@ -53,21 +53,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     let unlisten: (() => void) | undefined;
     listen<{ theme?: string; opacity?: number }>("settings-changed", (event) => {
+      if (!active) return;
       if (event.payload.theme !== undefined) {
         setTheme(event.payload.theme as "dark" | "light");
       }
       if (event.payload.opacity !== undefined) {
         setOpacity(event.payload.opacity);
       }
-    }).then((fn) => { unlisten = fn; });
-    return () => { unlisten?.(); };
+    }).then((fn) => {
+      unlisten = fn;
+      if (!active) unlisten();
+    });
+    return () => { active = false; unlisten?.(); };
   }, []);
 
   useEffect(() => {
+    let active = true;
     let unlisten: (() => void) | undefined;
     listen<null>("toggle-privacy", () => {
+      if (!active) return;
       const id = activeIdRef.current;
       if (!id) return;
       setNotes((prev) => {
@@ -77,8 +84,11 @@ export default function App() {
         invoke("save_note", { note: updated }).catch(console.error);
         return prev.map((n) => (n.id === id ? updated : n));
       });
-    }).then((fn) => { unlisten = fn; });
-    return () => { unlisten?.(); };
+    }).then((fn) => {
+      unlisten = fn;
+      if (!active) unlisten();
+    });
+    return () => { active = false; unlisten?.(); };
   }, []);
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 (function () {
   // In-memory state
   var notes = [];
-  var eventListeners = {};
+  var eventListeners = {};  // event -> [handlerCallbackId, ...]
+  var eventHandleMap = {};  // eventHandle -> { event, handlerCallbackId }
   var callbackRegistry = {};
   var nextId = 1;
   var currentSettings = {
@@ -24,6 +25,15 @@
       callbackRegistry[id] = fn;
     }
     return id;
+  }
+
+  // Remove a handler from eventListeners by its callbackId
+  function removeListener(event, handlerCallbackId) {
+    if (!eventListeners[event]) return;
+    eventListeners[event] = eventListeners[event].filter(function (id) {
+      return id !== handlerCallbackId;
+    });
+    delete callbackRegistry[handlerCallbackId];
   }
 
   // Dispatch table for all invoke commands the app uses
@@ -68,14 +78,25 @@
       // Tauri event system: listen() calls invoke("plugin:event|listen", { event, handler: callbackId })
       case "plugin:event|listen": {
         var event = args.event;
-        var handler = args.handler;
+        var handlerCallbackId = args.handler;
         if (!eventListeners[event]) eventListeners[event] = [];
-        eventListeners[event].push(handler); // handler is a callback ID in callbackRegistry
-        return Promise.resolve(nextId++); // return an event handle (used for unlisten)
+        eventListeners[event].push(handlerCallbackId);
+        // Return a unique eventHandle that maps back to this registration
+        var eventHandle = nextId++;
+        eventHandleMap[eventHandle] = { event: event, handlerCallbackId: handlerCallbackId };
+        return Promise.resolve(eventHandle);
       }
 
-      case "plugin:event|unlisten":
+      case "plugin:event|unlisten": {
+        // Remove listener by eventId (the handle returned from listen)
+        var eventId = args.eventId;
+        var entry = eventHandleMap[eventId];
+        if (entry) {
+          removeListener(entry.event, entry.handlerCallbackId);
+          delete eventHandleMap[eventId];
+        }
         return Promise.resolve(null);
+      }
 
       default:
         console.warn("[tauri-mock] Unhandled command:", cmd, args);
@@ -93,9 +114,20 @@
     },
   };
 
+  // Required by Tauri's _unlisten helper — called synchronously before invoke('unlisten')
+  window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    unregisterListener: function (event, eventId) {
+      var entry = eventHandleMap[eventId];
+      if (entry) {
+        removeListener(entry.event, entry.handlerCallbackId);
+        delete eventHandleMap[eventId];
+      }
+    },
+  };
+
   // Test helpers — called from Playwright via page.evaluate()
   window.__TEST_EMIT__ = function (event, payload) {
-    var cbIds = eventListeners[event] || [];
+    var cbIds = (eventListeners[event] || []).slice(); // snapshot to avoid mutation issues
     cbIds.forEach(function (cbId) {
       var cb = callbackRegistry[cbId];
       if (cb) cb({ event: event, payload: payload, id: Date.now() });
@@ -105,6 +137,7 @@
   window.__TEST_RESET__ = function () {
     notes = [];
     eventListeners = {};
+    eventHandleMap = {};
     callbackRegistry = {};
     nextId = 1;
     currentSettings = {
