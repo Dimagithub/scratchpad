@@ -347,6 +347,72 @@ pub fn run() {
                         }
                     });
                 }
+
+                if event.id() == "always_on_top" {
+                    let state = app.state::<AppState>();
+                    let new_val = {
+                        let mut s = state.settings.lock().unwrap();
+                        s.always_on_top = !s.always_on_top;
+                        let v = s.always_on_top;
+                        save_settings(&s);
+                        v
+                    };
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.set_always_on_top(new_val);
+                    }
+                    if let Some(menu) = app.menu() {
+                        if let Some(MenuItemKind::Check(item)) = menu.get("always_on_top") {
+                            let _ = item.set_checked(new_val);
+                        }
+                    }
+                }
+
+                let opacity_val = match event.id().as_ref() {
+                    "opacity_100" => Some(1.0f64),
+                    "opacity_75"  => Some(0.75),
+                    "opacity_50"  => Some(0.5),
+                    "opacity_25"  => Some(0.25),
+                    _ => None,
+                };
+                if let Some(opacity) = opacity_val {
+                    let state = app.state::<AppState>();
+                    {
+                        let mut s = state.settings.lock().unwrap();
+                        s.opacity = opacity;
+                        save_settings(&s);
+                    }
+                    if let Some(menu) = app.menu() {
+                        for id in &["opacity_100", "opacity_75", "opacity_50", "opacity_25"] {
+                            if let Some(MenuItemKind::Check(item)) = menu.get(*id) {
+                                let _ = item.set_checked(event.id().as_ref() == *id);
+                            }
+                        }
+                    }
+                    let _ = app.emit("settings-changed", serde_json::json!({ "opacity": opacity }));
+                }
+
+                if event.id() == "theme_dark" || event.id() == "theme_light" {
+                    let theme = if event.id() == "theme_dark" { "dark" } else { "light" };
+                    let state = app.state::<AppState>();
+                    {
+                        let mut s = state.settings.lock().unwrap();
+                        s.theme = theme.to_string();
+                        save_settings(&s);
+                    }
+                    if let Some(menu) = app.menu() {
+                        if let Some(MenuItemKind::Check(item)) = menu.get("theme_dark") {
+                            let _ = item.set_checked(theme == "dark");
+                        }
+                        if let Some(MenuItemKind::Check(item)) = menu.get("theme_light") {
+                            let _ = item.set_checked(theme == "light");
+                        }
+                    }
+                    let _ = app.emit("settings-changed", serde_json::json!({ "theme": theme }));
+                }
+
+                if event.id() == "toggle_privacy" {
+                    let _ = app.emit("toggle-privacy", ());
+                }
             });
 
             let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
