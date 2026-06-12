@@ -184,7 +184,9 @@ fn save_settings(settings: &AppSettings) {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
-    let path = format!("{}/ScratchPad/settings.json", home);
+    let dir = format!("{}/ScratchPad", home);
+    let path = format!("{}/settings.json", dir);
+    let _ = fs::create_dir_all(&dir);
     if let Ok(json) = serde_json::to_string_pretty(settings) {
         let _ = fs::write(&path, json);
     }
