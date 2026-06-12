@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-// import { listen } from "@tauri-apps/api/event"; // uncommented in Task 6
+import { listen } from "@tauri-apps/api/event";
 
 interface Note {
   id: string;
@@ -50,6 +50,35 @@ export default function App() {
         setOpacity(s.opacity);
       })
       .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<{ theme?: string; opacity?: number }>("settings-changed", (event) => {
+      if (event.payload.theme !== undefined) {
+        setTheme(event.payload.theme as "dark" | "light");
+      }
+      if (event.payload.opacity !== undefined) {
+        setOpacity(event.payload.opacity);
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<null>("toggle-privacy", () => {
+      const id = activeIdRef.current;
+      if (!id) return;
+      setNotes((prev) => {
+        const note = prev.find((n) => n.id === id);
+        if (!note) return prev;
+        const updated = { ...note, private: !note.private };
+        invoke("save_note", { note: updated }).catch(console.error);
+        return prev.map((n) => (n.id === id ? updated : n));
+      });
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
   }, []);
 
   useEffect(() => {
