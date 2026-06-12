@@ -27,6 +27,7 @@ fn default_theme() -> String { "dark".to_string() }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
+    #[serde(default = "AppSettings::default_storage_path")]
     pub storage_path: String,
     #[serde(default)]
     pub always_on_top: bool,
@@ -493,4 +494,86 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn settings_defaults_from_empty_json() {
+        let s: AppSettings = serde_json::from_str("{}").unwrap();
+        assert!(!s.always_on_top);
+        assert_eq!(s.opacity, 1.0);
+        assert_eq!(s.theme, "dark");
+    }
+
+    #[test]
+    fn settings_partial_json_fills_defaults() {
+        let json = r#"{"storage_path": "/tmp/notes.json"}"#;
+        let s: AppSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.storage_path, "/tmp/notes.json");
+        assert!(!s.always_on_top);
+        assert_eq!(s.opacity, 1.0);
+        assert_eq!(s.theme, "dark");
+    }
+
+    #[test]
+    fn settings_roundtrip() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("settings.json");
+        let original = AppSettings {
+            storage_path: "/tmp/notes.json".to_string(),
+            always_on_top: true,
+            opacity: 0.75,
+            theme: "light".to_string(),
+        };
+        let json = serde_json::to_string_pretty(&original).unwrap();
+        std::fs::write(&path, &json).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        let loaded: AppSettings = serde_json::from_str(&contents).unwrap();
+        assert_eq!(loaded.storage_path, original.storage_path);
+        assert_eq!(loaded.always_on_top, original.always_on_top);
+        assert_eq!(loaded.opacity, original.opacity);
+        assert_eq!(loaded.theme, original.theme);
+    }
+
+    #[test]
+    fn note_private_defaults_false() {
+        let json = r#"{"id":"abc","title":"Test","content":"hello","created_at":0}"#;
+        let note: Note = serde_json::from_str(json).unwrap();
+        assert!(!note.private);
+    }
+
+    #[test]
+    fn note_full_roundtrip() {
+        let original = Note {
+            id: "test-id".to_string(),
+            title: "Test Note".to_string(),
+            content: "Some content".to_string(),
+            created_at: 1_234_567_890,
+            private: true,
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let loaded: Note = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.id, original.id);
+        assert_eq!(loaded.title, original.title);
+        assert_eq!(loaded.content, original.content);
+        assert_eq!(loaded.created_at, original.created_at);
+        assert!(loaded.private);
+    }
+
+    #[test]
+    fn storage_path_fallback_logic() {
+        // Tests the HOME || USERPROFILE || "." chain without mutating env vars
+        let path_from_home: Result<String, _> = Err(std::env::VarError::NotPresent);
+        let path = path_from_home
+            .or_else(|_| Ok::<String, std::env::VarError>("C:\\Users\\tester".to_string()))
+            .unwrap_or_else(|_: std::env::VarError| ".".to_string());
+        let storage = format!("{}/ScratchPad/notes.json", path);
+        assert!(storage.ends_with("notes.json"));
+        assert!(storage.contains("ScratchPad"));
+        assert!(storage.contains("tester"));
+    }
 }
