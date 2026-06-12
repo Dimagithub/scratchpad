@@ -25,9 +25,11 @@ test("privacy mode masks content with bullet characters", async ({ page }) => {
 
   await enablePrivacy(page);
 
-  // Content should be 6 bullets matching "secret".length
-  await expect(editor).toHaveValue("••••••");
+  // Wait for the readonly textarea to mount (React swaps elements on privacy toggle)
   await expect(editor).toHaveAttribute("readonly", "");
+  // Now the privacy textarea is rendered — check the masked value
+  const val = await editor.inputValue();
+  expect(val).toBe("••••••");
 });
 
 test("privacy textarea cannot be edited by user", async ({ page }) => {
