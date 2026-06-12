@@ -507,6 +507,7 @@ mod tests {
         assert!(!s.always_on_top);
         assert_eq!(s.opacity, 1.0);
         assert_eq!(s.theme, "dark");
+        assert!(s.storage_path.contains("ScratchPad"), "storage_path should use platform default, got: {}", s.storage_path);
     }
 
     #[test]
@@ -565,15 +566,12 @@ mod tests {
     }
 
     #[test]
-    fn storage_path_fallback_logic() {
-        // Tests the HOME || USERPROFILE || "." chain without mutating env vars
-        let path_from_home: Result<String, _> = Err(std::env::VarError::NotPresent);
-        let path = path_from_home
-            .or_else(|_| Ok::<String, std::env::VarError>("C:\\Users\\tester".to_string()))
-            .unwrap_or_else(|_: std::env::VarError| ".".to_string());
-        let storage = format!("{}/ScratchPad/notes.json", path);
-        assert!(storage.ends_with("notes.json"));
-        assert!(storage.contains("ScratchPad"));
-        assert!(storage.contains("tester"));
+    fn storage_path_uses_platform_home() {
+        // Calls the actual method to verify it produces a usable path on this platform
+        let path = AppSettings::default_storage_path();
+        assert!(path.ends_with("notes.json"), "should end with notes.json, got: {}", path);
+        assert!(path.contains("ScratchPad"), "should contain ScratchPad dir, got: {}", path);
+        // HOME or USERPROFILE must be set in any normal dev/test environment
+        assert!(!path.starts_with("./ScratchPad"), "should not fall back to relative path, got: {}", path);
     }
 }
