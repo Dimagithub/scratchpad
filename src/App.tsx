@@ -243,13 +243,22 @@ export default function App() {
 
       <div style={styles.editor}>
         {activeNote ? (
-          <textarea
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Start typing..."
-            style={styles.textarea}
-            spellCheck={false}
-          />
+          activeNote.private ? (
+            <textarea
+              value={"•".repeat(content.length)}
+              readOnly
+              style={styles.textarea}
+              spellCheck={false}
+            />
+          ) : (
+            <textarea
+              value={content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              placeholder="Start typing..."
+              style={styles.textarea}
+              spellCheck={false}
+            />
+          )
         ) : (
           <div style={styles.empty}>
             <p>No notepads open</p>
