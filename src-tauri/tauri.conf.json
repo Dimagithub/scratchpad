@@ -40,9 +40,9 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/Dimagithub/scratchpad/releases/latest/download/latest.json"
+        "https://dimagithub.github.io/scratchpad/latest.json"
       ],
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4QzNBRUEwN0JERjg5QzMKUldURGlkOTdvSzdEMkUrc3JsRDVuMGt4MkpROVg4U0Q0THdYQ3BUMUZWc05KR2dxaG1XMHBHTTcK"
     }
   }
 }
