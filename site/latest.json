@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "Initial release",
+  "pub_date": "2026-06-13T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkl4RFJiYlBab0NDTUplNFZBYlZ1WnExNERPdFNkK3N4YVh5Y0dNelRiTXE3ajZmbXZPL0EvRExLS0U0bGxjQ2VWOWRXb0RuYjFydGttSmZCMDFCcHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMzY4NjMwCWZpbGU6U2NyYXRjaFBhZF8wLjEuMF94NjQtc2V0dXAuZXhlCmFNU0kyRmY1R0N5eStuYW5ENFRGNFVMMFMvZ01TanBoQTVWYXc4VjRlYnlNQVl3OVIrL0RYeUxmSFZ6N0RROU82RHp3bWczT0t4U1pRbWtXU2VrSURnPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v0.1.0/ScratchPad_0.1.0_x64-setup.exe"
+    }
+  }
+}
