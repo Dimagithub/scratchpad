@@ -35,7 +35,27 @@
       font-weight: 600;
     }
     .btn:hover { background: #1177bb; }
+    .btn-secondary { background: #333; }
+    .btn-secondary:hover { background: #444; }
     .platform { font-size: 12px; color: #666; margin-top: 10px; }
+    .download-row { margin-bottom: 16px; }
+    .install-note {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: #2a2a2a;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #888;
+      text-align: left;
+      line-height: 1.7;
+    }
+    .install-note code {
+      background: #1e1e1e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      color: #ce9178;
+    }
     .features {
       margin-top: 40px;
       text-align: left;
@@ -55,14 +75,22 @@
     <h1>ScratchPad</h1>
     <p class="tagline">A lightweight tabbed notepad.<br>Quick notes, stored locally — nothing leaves your computer.</p>
 
-    <a href="https://github.com/Dimagithub/scratchpad/releases/download/v0.1.0/ScratchPad_0.1.0_aarch64.dmg"
-       class="btn">⬇ Download for Mac</a>
-    <p class="platform">macOS · Apple Silicon · v0.1.0</p>
+    <div class="download-row">
+      <a href="https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_1.0.0_aarch64.dmg"
+         class="btn">⬇ Download for Mac</a>
+      <p class="platform">macOS · Apple Silicon · v1.0.0</p>
+      <div class="install-note">
+        After dragging to Applications, macOS may block the app.<br>
+        Open Terminal and run:<br><br>
+        <code>xattr -cr /Applications/ScratchPad.app</code><br><br>
+        Then open the app normally.
+      </div>
+    </div>
 
-    <div style="margin-top: 16px;">
-      <a href="https://github.com/Dimagithub/scratchpad/releases/download/v0.1.0/ScratchPad_0.1.0_x64-setup.exe"
-         class="btn" style="background:#333;">⬇ Download for Windows</a>
-      <p class="platform">Windows 10/11 · x64 · v0.1.0</p>
+    <div class="download-row">
+      <a href="https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
+         class="btn btn-secondary">⬇ Download for Windows</a>
+      <p class="platform">Windows 10/11 · x64 · v1.0.0</p>
     </div>
 
     <ul class="features">
