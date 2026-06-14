@@ -199,6 +199,15 @@ fn get_settings(settings: State<AppState>) -> Result<AppSettings, String> {
     Ok(s.clone())
 }
 
+#[tauri::command]
+fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
+    if let Some(menu) = app.menu() {
+        if let Some(MenuItemKind::Check(item)) = menu.get("toggle_privacy") {
+            let _ = item.set_checked(is_private);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -249,7 +258,7 @@ pub fn run() {
                 .item(&th_dark).item(&th_light)
                 .build()?;
 
-            let privacy_item = MenuItemBuilder::with_id("toggle_privacy", "Toggle Privacy for Current Note").build(app)?;
+            let privacy_item = CheckMenuItemBuilder::with_id("toggle_privacy", "Privacy Mode").checked(false).build(app)?;
 
             let view_submenu = SubmenuBuilder::new(app, "View")
                 .item(&aot_item)
@@ -491,6 +500,7 @@ pub fn run() {
             create_new_note,
             rename_note,
             get_settings,
+            set_privacy_menu_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -82,6 +82,7 @@ export default function App() {
         if (!note) return prev;
         const updated = { ...note, private: !note.private };
         invoke("save_note", { note: updated }).catch(console.error);
+        invoke("set_privacy_menu_state", { isPrivate: updated.private }).catch(console.error);
         return prev.map((n) => (n.id === id ? updated : n));
       });
     }).then((fn) => {
@@ -90,6 +91,11 @@ export default function App() {
     });
     return () => { active = false; unlisten?.(); };
   }, []);
+
+  useEffect(() => {
+    const note = notes.find((n) => n.id === activeId);
+    invoke("set_privacy_menu_state", { isPrivate: note?.private ?? false }).catch(console.error);
+  }, [activeId, notes]);
 
   useEffect(() => {
     if (!loaded) return;
