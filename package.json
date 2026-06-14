@@ -7,7 +7,7 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:build": "tauri build && rm -rf src-tauri/target/release/bundle/macos/ScratchPad.app",
     "test": "playwright test",
     "test:rust": "cd src-tauri && cargo test --lib"
   },

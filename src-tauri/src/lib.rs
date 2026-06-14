@@ -303,7 +303,7 @@ pub fn run() {
             app.on_menu_event(|app, event| {
                 if event.id() == "about" {
                     app.dialog()
-                        .message("ScratchPad\nVersion 0.1.0\n\nA lightweight tabbed notepad.\n\nhttps://dima0.com")
+                        .message(&format!("ScratchPad\nVersion {}\n\nA lightweight tabbed notepad.\n\nhttps://dima0.com", app.package_info().version))
                         .title("About ScratchPad")
                         .blocking_show();
                 }
