@@ -3,3 +3,6 @@ src-tauri/target/
 src-tauri/dist/
 .DS_Store
 *.log
+.tauri/
+test-results/
+*.swp

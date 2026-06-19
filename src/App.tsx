@@ -44,7 +44,7 @@ export default function App() {
   }, [activeId]);
 
   useEffect(() => {
-    invoke<{ theme: string; always_on_top: boolean; opacity: number }>("get_settings")
+    invoke<{ theme: string; opacity: number }>("get_settings")
       .then((s) => {
         setTheme(s.theme as "dark" | "light");
         setOpacity(s.opacity);
@@ -70,27 +70,30 @@ export default function App() {
     return () => { active = false; unlisten?.(); };
   }, []);
 
+  const togglePrivacy = useCallback(() => {
+    const id = activeIdRef.current;
+    if (!id) return;
+    setNotes((prev) => {
+      const note = prev.find((n) => n.id === id);
+      if (!note) return prev;
+      const updated = { ...note, private: !note.private };
+      invoke("save_note", { note: updated }).catch(console.error);
+      invoke("set_privacy_menu_state", { isPrivate: updated.private }).catch(console.error);
+      return prev.map((n) => (n.id === id ? updated : n));
+    });
+  }, []);
+
   useEffect(() => {
     let active = true;
     let unlisten: (() => void) | undefined;
     listen<null>("toggle-privacy", () => {
-      if (!active) return;
-      const id = activeIdRef.current;
-      if (!id) return;
-      setNotes((prev) => {
-        const note = prev.find((n) => n.id === id);
-        if (!note) return prev;
-        const updated = { ...note, private: !note.private };
-        invoke("save_note", { note: updated }).catch(console.error);
-        invoke("set_privacy_menu_state", { isPrivate: updated.private }).catch(console.error);
-        return prev.map((n) => (n.id === id ? updated : n));
-      });
+      if (active) togglePrivacy();
     }).then((fn) => {
       unlisten = fn;
       if (!active) unlisten();
     });
     return () => { active = false; unlisten?.(); };
-  }, []);
+  }, [togglePrivacy]);
 
   useEffect(() => {
     const note = notes.find((n) => n.id === activeId);
@@ -139,7 +142,10 @@ export default function App() {
 
   const handleAdd = async () => {
     try {
-      const note = await invoke<Note>("create_new_note");
+      const title = `Notepad ${new Date().toLocaleString("en-US", {
+        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+      })}`;
+      const note = await invoke<Note>("create_new_note", { title });
       setNotes((prev) => [...prev, note]);
       setActiveId(note.id);
     } catch (err) {
@@ -256,6 +262,16 @@ export default function App() {
             </div>
           ))}
         </div>
+        {activeNote && (
+          <button
+            onClick={togglePrivacy}
+            style={{ ...styles.addButton, fontSize: 15, ...(activeNote.private ? styles.privacyActive : {}) }}
+            title={activeNote.private ? "Disable privacy mode" : "Enable privacy mode"}
+            data-testid="privacy-toggle"
+          >
+            {activeNote.private ? "🔒" : "🔓"}
+          </button>
+        )}
         <button onClick={handleAdd} style={styles.addButton} data-testid="add-tab">
           +
         </button>
@@ -380,6 +396,9 @@ function getStyles(theme: "dark" | "light", opacity: number): Record<string, Rea
       padding: "0 14px",
       flexShrink: 0,
       minHeight: 36,
+    },
+    privacyActive: {
+      background: dark ? "rgba(0, 122, 204, 0.25)" : "rgba(0, 120, 212, 0.18)",
     },
     editor: {
       flex: 1,

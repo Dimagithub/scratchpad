@@ -62,6 +62,20 @@ test("toggling privacy off restores editable content", async ({ page }) => {
   await expect(editor).toHaveValue("secret");
 });
 
+test("toolbar button toggles privacy mode", async ({ page }) => {
+  const editor = page.locator('[data-testid="editor"]');
+  await editor.fill("secret");
+  await page.waitForTimeout(700);
+
+  await page.locator('[data-testid="privacy-toggle"]').click();
+  await expect(editor).toHaveAttribute("readonly", "");
+  expect(await editor.inputValue()).toBe("••••••");
+
+  await page.locator('[data-testid="privacy-toggle"]').click();
+  await expect(editor).not.toHaveAttribute("readonly");
+  await expect(editor).toHaveValue("secret");
+});
+
 test("privacy flag survives tab switch", async ({ page }) => {
   // Enable privacy on tab A
   const editor = page.locator('[data-testid="editor"]');

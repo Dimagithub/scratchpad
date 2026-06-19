@@ -45,7 +45,7 @@
       case "create_new_note": {
         var note = {
           id: crypto.randomUUID(),
-          title: "Notepad Test",
+          title: (args && args.title) || "Notepad Test",
           content: "",
           created_at: Date.now(),
           private: false,

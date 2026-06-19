@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{
-    menu::{CheckMenuItem, CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, SubmenuBuilder},
+    menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, SubmenuBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, State, WindowEvent,
 };
@@ -62,71 +62,49 @@ pub struct AppState {
     pub settings: Mutex<AppSettings>,
 }
 
+fn load_notes(path: &str) -> Vec<Note> {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|c| serde_json::from_str(&c).ok())
+        .unwrap_or_default()
+}
+
+fn store_notes(path: &str, notes: &[Note]) -> Result<(), String> {
+    if let Some(parent) = PathBuf::from(path).parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    let json = serde_json::to_string_pretty(notes).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))
+}
+
 #[tauri::command]
 fn get_notes(settings: State<AppState>) -> Result<Vec<Note>, String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-    match fs::read_to_string(path) {
-        Ok(contents) => serde_json::from_str(&contents).map_err(|e| e.to_string()),
-        Err(_) => Ok(vec![]),
-    }
+    Ok(load_notes(&s.storage_path))
 }
 
 #[tauri::command]
 fn save_note(note: Note, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-
-    let notes_path = PathBuf::from(path);
-    if let Some(parent) = notes_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-
-    let mut notes: Vec<Note> = match fs::read_to_string(path) {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
-        Err(_) => vec![],
-    };
-
+    let mut notes = load_notes(&s.storage_path);
     if let Some(pos) = notes.iter().position(|n| n.id == note.id) {
         notes[pos] = note;
     } else {
         notes.push(note);
     }
-
-    let json = serde_json::to_string_pretty(&notes).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))?;
-
-    Ok(())
+    store_notes(&s.storage_path, &notes)
 }
 
 #[tauri::command]
 fn delete_note(note_id: String, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-
-    let notes: Vec<Note> = match fs::read_to_string(path) {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
-        Err(_) => vec![],
-    };
-
-    let notes: Vec<Note> = notes.into_iter().filter(|n| n.id != note_id).collect();
-    let json = serde_json::to_string_pretty(&notes).map_err(|e| e.to_string())?;
-
-    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))?;
-
-    Ok(())
+    let mut notes = load_notes(&s.storage_path);
+    notes.retain(|n| n.id != note_id);
+    store_notes(&s.storage_path, &notes)
 }
 
 #[tauri::command]
-fn purge_all_notes(settings: State<AppState>) -> Result<(), String> {
-    let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-    fs::write(path, "[]").map_err(|e| format!("Failed to clear notes: {}", e))?;
-    Ok(())
-}
-
-#[tauri::command]
-fn create_new_note(settings: State<AppState>) -> Result<Note, String> {
+fn create_new_note(title: String, settings: State<AppState>) -> Result<Note, String> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -134,51 +112,27 @@ fn create_new_note(settings: State<AppState>) -> Result<Note, String> {
 
     let note = Note {
         id: uuid::Uuid::new_v4().to_string(),
-        title: format!("Notepad {}", chrono::Local::now().format("%b %-d, %H:%M")),
+        title,
         content: String::new(),
         created_at: now,
         private: false,
     };
 
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-
-    let notes_path = PathBuf::from(path);
-    if let Some(parent) = notes_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-
-    let mut notes: Vec<Note> = match fs::read_to_string(path) {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
-        Err(_) => vec![],
-    };
-
+    let mut notes = load_notes(&s.storage_path);
     notes.push(note.clone());
-
-    let json = serde_json::to_string_pretty(&notes).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))?;
-
+    store_notes(&s.storage_path, &notes)?;
     Ok(note)
 }
 
 #[tauri::command]
 fn rename_note(note_id: String, new_title: String, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let path = &s.storage_path;
-
-    let mut notes: Vec<Note> = match fs::read_to_string(path) {
-        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
-        Err(_) => vec![],
-    };
-
+    let mut notes = load_notes(&s.storage_path);
     if let Some(note) = notes.iter_mut().find(|n| n.id == note_id) {
         note.title = new_title;
     }
-
-    let json = serde_json::to_string_pretty(&notes).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))?;
-
-    Ok(())
+    store_notes(&s.storage_path, &notes)
 }
 
 fn save_settings(settings: &AppSettings) {
@@ -496,7 +450,6 @@ pub fn run() {
             get_notes,
             save_note,
             delete_note,
-            purge_all_notes,
             create_new_note,
             rename_note,
             get_settings,
