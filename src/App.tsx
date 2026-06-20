@@ -24,6 +24,12 @@ export default function App() {
   const [opacity, setOpacity] = useState(1.0);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [caseSensitive, setCaseSensitive] = useState(true);
+  const [currentMatch, setCurrentMatch] = useState(0);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef<string | null>(null);
 
   const loadNotes = useCallback(async () => {
@@ -121,6 +127,57 @@ export default function App() {
       setUpdating(false);
     });
   };
+
+  const matches = useMemo(() => {
+    if (!query) return [];
+    const note = notes.find((n) => n.id === activeId);
+    if (!note || note.private) return [];
+    const hay = caseSensitive ? content : content.toLowerCase();
+    const needle = caseSensitive ? query : query.toLowerCase();
+    const res: number[] = [];
+    let i = hay.indexOf(needle);
+    while (i !== -1) {
+      res.push(i);
+      i = hay.indexOf(needle, i + needle.length);
+    }
+    return res;
+  }, [query, content, caseSensitive, notes, activeId]);
+
+  const revealMatch = useCallback((start: number) => {
+    const ta = editorRef.current;
+    if (!ta) return;
+    ta.setSelectionRange(start, start + query.length);
+    // approximate scroll-to: textarea is 14px font with 1.6 line-height
+    const line = content.slice(0, start).split("\n").length - 1;
+    ta.scrollTop = Math.max(0, line * 14 * 1.6 - ta.clientHeight / 2);
+  }, [query, content]);
+
+  useEffect(() => { setCurrentMatch(0); }, [query, caseSensitive, activeId]);
+
+  useEffect(() => {
+    if (matches.length > 0 && currentMatch < matches.length) {
+      revealMatch(matches[currentMatch]);
+    }
+  }, [matches, currentMatch, revealMatch]);
+
+  const goNext = () => { if (matches.length) setCurrentMatch((c) => (c + 1) % matches.length); };
+  const goPrev = () => { if (matches.length) setCurrentMatch((c) => (c - 1 + matches.length) % matches.length); };
+  const closeSearch = () => { setSearchOpen(false); editorRef.current?.focus(); };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        if (!activeIdRef.current) return;
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchRef.current?.select(), 0);
+      } else if (e.key === "Escape" && searchOpen) {
+        closeSearch();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [searchOpen]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -295,6 +352,19 @@ export default function App() {
             {updating ? "Updating…" : `⬆ New Release ${updateVersion}`}
           </button>
         )}
+        {activeNote && !activeNote.private && (
+          <button
+            onClick={() => {
+              setSearchOpen((v) => !v);
+              setTimeout(() => searchRef.current?.select(), 0);
+            }}
+            style={{ ...styles.addButton, fontSize: 14, ...(searchOpen ? styles.privacyActive : {}) }}
+            title="Find (⌘F)"
+            data-testid="search-toggle"
+          >
+            🔍
+          </button>
+        )}
         {activeNote && (
           <button
             onClick={togglePrivacy}
@@ -310,6 +380,38 @@ export default function App() {
         </button>
       </div>
 
+      {searchOpen && activeNote && !activeNote.private && (
+        <div style={styles.searchBar}>
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.shiftKey ? goPrev() : goNext(); }
+              if (e.key === "Escape") closeSearch();
+            }}
+            placeholder="Find"
+            style={styles.searchInput}
+            data-testid="search-input"
+            autoFocus
+          />
+          <button
+            onClick={() => setCaseSensitive((v) => !v)}
+            style={{ ...styles.searchBtn, ...(caseSensitive ? styles.searchBtnActive : {}) }}
+            title="Match case"
+            data-testid="search-case"
+          >
+            Aa
+          </button>
+          <span style={styles.searchCount} data-testid="search-count">
+            {matches.length ? `${currentMatch + 1}/${matches.length}` : query ? "0/0" : ""}
+          </span>
+          <button onClick={goPrev} disabled={!matches.length} style={styles.searchBtn} title="Previous (⇧⏎)" data-testid="search-prev">↑</button>
+          <button onClick={goNext} disabled={!matches.length} style={styles.searchBtn} title="Next (⏎)" data-testid="search-next">↓</button>
+          <button onClick={closeSearch} style={styles.searchBtn} title="Close (Esc)" data-testid="search-close">×</button>
+        </div>
+      )}
+
       <div style={styles.editor}>
         {activeNote ? (
           activeNote.private ? (
@@ -322,6 +424,7 @@ export default function App() {
             />
           ) : (
             <textarea
+              ref={editorRef}
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
               placeholder="Start typing..."
@@ -432,6 +535,46 @@ function getStyles(theme: "dark" | "light", opacity: number): Record<string, Rea
     },
     privacyActive: {
       background: dark ? "rgba(0, 122, 204, 0.25)" : "rgba(0, 120, 212, 0.18)",
+    },
+    searchBar: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "6px 8px",
+      background: tabBarBg,
+      borderBottom: `1px solid ${dark ? "#474747" : "#d0d0d0"}`,
+      flexShrink: 0,
+    },
+    searchInput: {
+      flex: 1,
+      maxWidth: 240,
+      background: dark ? `rgba(60, 60, 60, ${opacity})` : `rgba(255, 255, 255, ${opacity})`,
+      border: `1px solid ${dark ? "#555" : "#ccc"}`,
+      borderRadius: 3,
+      color: dark ? "#d4d4d4" : "#1a1a1a",
+      fontSize: 12,
+      padding: "3px 6px",
+      outline: "none",
+      fontFamily: "inherit",
+    },
+    searchBtn: {
+      background: "transparent",
+      border: "none",
+      color: dark ? "#ccc" : "#444",
+      cursor: "pointer",
+      fontSize: 13,
+      padding: "2px 6px",
+      borderRadius: 3,
+      minWidth: 22,
+    },
+    searchBtnActive: {
+      background: dark ? "rgba(0, 122, 204, 0.35)" : "rgba(0, 120, 212, 0.22)",
+    },
+    searchCount: {
+      fontSize: 11,
+      color: dark ? "#999" : "#777",
+      minWidth: 36,
+      textAlign: "center",
     },
     updateButton: {
       alignSelf: "center",
