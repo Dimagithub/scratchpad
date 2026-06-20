@@ -22,6 +22,8 @@ export default function App() {
   const contentLoaded = useRef(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [opacity, setOpacity] = useState(1.0);
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
   const activeIdRef = useRef<string | null>(null);
 
   const loadNotes = useCallback(async () => {
@@ -99,6 +101,26 @@ export default function App() {
     const note = notes.find((n) => n.id === activeId);
     invoke("set_privacy_menu_state", { isPrivate: note?.private ?? false }).catch(console.error);
   }, [activeId, notes]);
+
+  useEffect(() => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    listen<string>("update-available", (event) => {
+      if (active) setUpdateVersion(event.payload);
+    }).then((fn) => {
+      unlisten = fn;
+      if (!active) unlisten();
+    });
+    return () => { active = false; unlisten?.(); };
+  }, []);
+
+  const handleInstallUpdate = () => {
+    setUpdating(true);
+    invoke("install_update").catch((err) => {
+      console.error("Update failed:", err);
+      setUpdating(false);
+    });
+  };
 
   useEffect(() => {
     if (!loaded) return;
@@ -262,6 +284,17 @@ export default function App() {
             </div>
           ))}
         </div>
+        {updateVersion && (
+          <button
+            onClick={handleInstallUpdate}
+            disabled={updating}
+            style={styles.updateButton}
+            title={`Install ScratchPad ${updateVersion} and restart`}
+            data-testid="update-button"
+          >
+            {updating ? "Updating…" : `⬆ New Release ${updateVersion}`}
+          </button>
+        )}
         {activeNote && (
           <button
             onClick={togglePrivacy}
@@ -399,6 +432,20 @@ function getStyles(theme: "dark" | "light", opacity: number): Record<string, Rea
     },
     privacyActive: {
       background: dark ? "rgba(0, 122, 204, 0.25)" : "rgba(0, 120, 212, 0.18)",
+    },
+    updateButton: {
+      alignSelf: "center",
+      margin: "0 6px",
+      padding: "4px 10px",
+      background: dark ? "#0e639c" : "#0078d4",
+      color: "white",
+      border: "none",
+      borderRadius: 4,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600,
+      whiteSpace: "nowrap",
+      flexShrink: 0,
     },
     editor: {
       flex: 1,

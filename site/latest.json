@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
-  "notes": "Fixes macOS in-app auto-update; privacy mode quick-toggle in the toolbar",
+  "version": "1.0.3",
+  "notes": "Automatic update checks every 5 minutes with a New Release button; privacy toolbar toggle",
   "pub_date": "2026-06-19T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
@@ -8,8 +8,8 @@
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkR6NTd3NXhVem4ycnlDNnJYN2pGZFBlTkdoZDJhTlNvdS8rZERBR0haNFUyenVxa3lwMVptNS91ZTRDWnpZcnBSUjgvaVNCV24vZDgwUllLWEM1SVEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxOTEzOTE4CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6Ci9TWWlQdnpXcjd3K0VJdXVNUnNzOUZiZktpSHE3YThMR1g1TEphNnliYllqYzFzZ29lMzdtNVAxUXpIT0krcGx2SENXRU12YXNmemFQeEdZUk5FYkNRPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.2/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkRRSmNycjJ5TGNzYWQrOUhFUHNybE1vNm12OGpsVG9xdUpGUGQ0UEF6YzdDMUVDU1AxMU9iZG5RNVFFdjFUVHpLUkYyckxGSDNnU2l2Z240a3lqc2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxOTE0ODI5CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CjhHY0dQaExGdmpRR2hHWDNoV2FKdUx5TmdJalhpRXdjTnM1TEw3QWJ0ejkrdDVNZHZyb1RrN3NzRng1VkViZVJDdER3aHZQeG1zTFkvS1J2ZEF0SkF3PT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.3/ScratchPad.app.tar.gz"
     }
   }
 }

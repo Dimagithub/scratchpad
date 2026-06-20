@@ -75,6 +75,9 @@
       case "get_settings":
         return Promise.resolve(JSON.parse(JSON.stringify(currentSettings)));
 
+      case "install_update":
+        return Promise.resolve(null);
+
       // Tauri event system: listen() calls invoke("plugin:event|listen", { event, handler: callbackId })
       case "plugin:event|listen": {
         var event = args.event;

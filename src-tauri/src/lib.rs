@@ -162,6 +162,21 @@ fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
     }
 }
 
+// Triggered by the "New Release" button. Re-checks (the Update handle isn't kept
+// around), then downloads, installs, and restarts into the new version.
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        update
+            .download_and_install(|_, _| {}, || {})
+            .await
+            .map_err(|e| e.to_string())?;
+        app.restart();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -462,6 +477,23 @@ pub fn run() {
                 });
             }
 
+            // Poll for updates: first check shortly after launch, then every 5 min.
+            // Emits "update-available" with the version so the UI can show a button.
+            // ponytail: dedicated thread + block_on avoids pulling in a tokio timer.
+            let updater_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let mut delay = std::time::Duration::from_secs(15);
+                loop {
+                    std::thread::sleep(delay);
+                    delay = std::time::Duration::from_secs(300);
+                    if let Ok(updater) = updater_handle.updater() {
+                        if let Ok(Some(update)) = tauri::async_runtime::block_on(updater.check()) {
+                            let _ = updater_handle.emit("update-available", update.version);
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -472,6 +504,7 @@ pub fn run() {
             rename_note,
             get_settings,
             set_privacy_menu_state,
+            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
