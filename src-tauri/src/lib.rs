@@ -7,7 +7,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, State, WindowEvent,
 };
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_updater::UpdaterExt;
@@ -290,11 +290,29 @@ pub fn run() {
                         };
                         match updater.check().await {
                             Ok(Some(update)) => {
-                                let _ = handle.dialog()
-                                    .message(format!("Version {} is available. Download now?", update.version))
+                                let confirmed = handle.dialog()
+                                    .message(format!("Version {} is available. Download and install now?", update.version))
                                     .title("Update Available")
+                                    .buttons(MessageDialogButtons::OkCancel)
                                     .blocking_show();
-
+                                if !confirmed {
+                                    return;
+                                }
+                                match update.download_and_install(|_, _| {}, || {}).await {
+                                    Ok(_) => {
+                                        handle.dialog()
+                                            .message("Update installed. ScratchPad will now restart.")
+                                            .title("Update Complete")
+                                            .blocking_show();
+                                        handle.restart();
+                                    }
+                                    Err(e) => {
+                                        let _ = handle.dialog()
+                                            .message(format!("Failed to install update: {}", e))
+                                            .title("Error")
+                                            .blocking_show();
+                                    }
+                                }
                             }
                             Ok(None) => {
                                 let _ = handle.dialog()
