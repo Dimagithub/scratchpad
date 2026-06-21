@@ -1,6 +1,6 @@
 {
-  "version": "1.0.6",
-  "notes": "Internal cleanup; keyword search highlight; automatic update checks; privacy toolbar toggle",
+  "version": "1.0.7",
+  "notes": "macOS opacity/transparency fix; tab rename hint; keyword search; automatic update checks",
   "pub_date": "2026-06-21T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
@@ -8,8 +8,8 @@
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkU1U0JUR2hEVHo1RklWTWY0cnZMMEl3SFZ4MzFpUDV1bVpBcjZuZVJ6SzRQNFhDNE9RTWV3MjBxb2Y4eW1vMmhlaWtuOStTallQWW96VWUyMDNQU0FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMDcwMDI5CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CkVvcmp4MmFLdEVjTFdaeFVhTnhwOGJvTHNPSlg5Tkt1T2ZQUm8xdXZlVU1wL3lMekY4alhub1hvUTMrei9ydWxXZFlOdjhNY1c4aXo1RUtKTVFKTUJnPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.6/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkhLN0Q3RGJ1alY1ODNBWm1KZWg0Y21pUi9zYWhOblZzZGl6MzUyYTJlQys2UHpYSllzaUFaY0c5QS9YaTRPeTlPVTNSVk9KRlVjejRTQXFTTlVqQWdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMDc4ODMyCWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CkJOOGFKQmlZd2NpYjN2VjB0ODVnM01ZQmtyN0dFaXZzY2QwckVSdlBJNDZHY2V1emxZUFYzbjhDM0U0NUFyTkhMU3p6RkxaeTBQVHI4bEtRS3JMSERnPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.7/ScratchPad.app.tar.gz"
     }
   }
 }
