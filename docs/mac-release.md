@@ -1,5 +1,9 @@
 # Building and Publishing a macOS Release
 
+> Note: window transparency (the Opacity setting) uses `app.macOSPrivateApi` +
+> the `macos-private-api` Cargo feature. This relies on a private Apple API, so
+> the app **cannot be distributed via the Mac App Store** — DMG distribution only.
+
 ## Prerequisites
 
 - Mac with Xcode command line tools (`xcode-select --install`)

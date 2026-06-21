@@ -1,6 +1,6 @@
 {
   "productName": "ScratchPad",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "identifier": "com.scratchpad.desktop",
   "build": {
     "beforeBuildCommand": "npm run build",
@@ -8,6 +8,7 @@
     "frontendDist": "../src-tauri/dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",

@@ -313,6 +313,7 @@ export default function App() {
                     startRenaming(note.id, note.title);
                   }}
                   style={styles.tabTitle}
+                  title="Double-click to rename"
                   data-testid="tab-title"
                 >
                   {note.title}
