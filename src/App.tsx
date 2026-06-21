@@ -30,6 +30,7 @@ export default function App() {
   const [currentMatch, setCurrentMatch] = useState(0);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const navigatedRef = useRef(false);
   const activeIdRef = useRef<string | null>(null);
 
   const loadNotes = useCallback(async () => {
@@ -143,25 +144,32 @@ export default function App() {
     return res;
   }, [query, content, caseSensitive, notes, activeId]);
 
-  const revealMatch = useCallback((start: number) => {
+  // Focus the editor so the native selection is actually painted — a textarea
+  // only highlights its selection while focused. Then scroll the match into view.
+  const revealMatch = (start: number) => {
     const ta = editorRef.current;
     if (!ta) return;
+    ta.focus();
     ta.setSelectionRange(start, start + query.length);
     // approximate scroll-to: textarea is 14px font with 1.6 line-height
     const line = content.slice(0, start).split("\n").length - 1;
     ta.scrollTop = Math.max(0, line * 14 * 1.6 - ta.clientHeight / 2);
-  }, [query, content]);
+  };
 
-  useEffect(() => { setCurrentMatch(0); }, [query, caseSensitive, activeId]);
+  // New query resets the cursor; the first nav lands on match 0, then cycles.
+  useEffect(() => { setCurrentMatch(0); navigatedRef.current = false; }, [query, caseSensitive, activeId]);
 
-  useEffect(() => {
-    if (matches.length > 0 && currentMatch < matches.length) {
-      revealMatch(matches[currentMatch]);
-    }
-  }, [matches, currentMatch, revealMatch]);
-
-  const goNext = () => { if (matches.length) setCurrentMatch((c) => (c + 1) % matches.length); };
-  const goPrev = () => { if (matches.length) setCurrentMatch((c) => (c - 1 + matches.length) % matches.length); };
+  const jump = (delta: number) => {
+    if (!matches.length) return;
+    const idx = navigatedRef.current
+      ? (currentMatch + delta + matches.length) % matches.length
+      : currentMatch;
+    navigatedRef.current = true;
+    setCurrentMatch(idx);
+    revealMatch(matches[idx]);
+  };
+  const goNext = () => jump(1);
+  const goPrev = () => jump(-1);
   const closeSearch = () => { setSearchOpen(false); editorRef.current?.focus(); };
 
   useEffect(() => {
@@ -387,7 +395,9 @@ export default function App() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") { e.shiftKey ? goPrev() : goNext(); }
+              // preventDefault: revealMatch focuses the editor, so without this the
+              // Enter keypress would insert a newline into the now-focused textarea.
+              if (e.key === "Enter") { e.preventDefault(); e.shiftKey ? goPrev() : goNext(); }
               if (e.key === "Escape") closeSearch();
             }}
             placeholder="Find"
