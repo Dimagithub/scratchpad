@@ -153,13 +153,17 @@ fn get_settings(settings: State<AppState>) -> Result<AppSettings, String> {
     Ok(s.clone())
 }
 
-#[tauri::command]
-fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
+fn set_menu_check(app: &tauri::AppHandle, id: &str, checked: bool) {
     if let Some(menu) = app.menu() {
-        if let Some(MenuItemKind::Check(item)) = menu.get("toggle_privacy") {
-            let _ = item.set_checked(is_private);
+        if let Some(MenuItemKind::Check(item)) = menu.get(id) {
+            let _ = item.set_checked(checked);
         }
     }
+}
+
+#[tauri::command]
+fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
+    set_menu_check(&app, "toggle_privacy", is_private);
 }
 
 // Triggered by the "New Release" button. Re-checks (the Update handle isn't kept
@@ -357,11 +361,7 @@ pub fn run() {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.set_always_on_top(new_val);
                     }
-                    if let Some(menu) = app.menu() {
-                        if let Some(MenuItemKind::Check(item)) = menu.get("always_on_top") {
-                            let _ = item.set_checked(new_val);
-                        }
-                    }
+                    set_menu_check(app, "always_on_top", new_val);
                 }
 
                 let opacity_val = match event.id().as_ref() {
@@ -378,12 +378,8 @@ pub fn run() {
                         s.opacity = opacity;
                         save_settings(&s);
                     }
-                    if let Some(menu) = app.menu() {
-                        for id in &["opacity_100", "opacity_75", "opacity_50", "opacity_25"] {
-                            if let Some(MenuItemKind::Check(item)) = menu.get(*id) {
-                                let _ = item.set_checked(event.id().as_ref() == *id);
-                            }
-                        }
+                    for id in &["opacity_100", "opacity_75", "opacity_50", "opacity_25"] {
+                        set_menu_check(app, id, event.id().as_ref() == *id);
                     }
                     let _ = app.emit("settings-changed", serde_json::json!({ "opacity": opacity }));
                 }
@@ -396,14 +392,8 @@ pub fn run() {
                         s.theme = theme.to_string();
                         save_settings(&s);
                     }
-                    if let Some(menu) = app.menu() {
-                        if let Some(MenuItemKind::Check(item)) = menu.get("theme_dark") {
-                            let _ = item.set_checked(theme == "dark");
-                        }
-                        if let Some(MenuItemKind::Check(item)) = menu.get("theme_light") {
-                            let _ = item.set_checked(theme == "light");
-                        }
-                    }
+                    set_menu_check(app, "theme_dark", theme == "dark");
+                    set_menu_check(app, "theme_light", theme == "light");
                     let _ = app.emit("settings-changed", serde_json::json!({ "theme": theme }));
                 }
 

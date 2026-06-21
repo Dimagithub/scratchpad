@@ -10,6 +10,21 @@ interface Note {
   private: boolean;
 }
 
+// Subscribe to a Tauri event for the component's lifetime, guarding against the
+// async listen() resolving after unmount.
+function useTauriEvent<T>(event: string, handler: (payload: T) => void, deps: React.DependencyList = []) {
+  useEffect(() => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    listen<T>(event, (e) => { if (active) handler(e.payload); }).then((fn) => {
+      unlisten = fn;
+      if (!active) unlisten();
+    });
+    return () => { active = false; unlisten?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -61,23 +76,10 @@ export default function App() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    let unlisten: (() => void) | undefined;
-    listen<{ theme?: string; opacity?: number }>("settings-changed", (event) => {
-      if (!active) return;
-      if (event.payload.theme !== undefined) {
-        setTheme(event.payload.theme as "dark" | "light");
-      }
-      if (event.payload.opacity !== undefined) {
-        setOpacity(event.payload.opacity);
-      }
-    }).then((fn) => {
-      unlisten = fn;
-      if (!active) unlisten();
-    });
-    return () => { active = false; unlisten?.(); };
-  }, []);
+  useTauriEvent<{ theme?: string; opacity?: number }>("settings-changed", (p) => {
+    if (p.theme !== undefined) setTheme(p.theme as "dark" | "light");
+    if (p.opacity !== undefined) setOpacity(p.opacity);
+  });
 
   const togglePrivacy = useCallback(() => {
     const id = activeIdRef.current;
@@ -92,34 +94,14 @@ export default function App() {
     });
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    let unlisten: (() => void) | undefined;
-    listen<null>("toggle-privacy", () => {
-      if (active) togglePrivacy();
-    }).then((fn) => {
-      unlisten = fn;
-      if (!active) unlisten();
-    });
-    return () => { active = false; unlisten?.(); };
-  }, [togglePrivacy]);
+  useTauriEvent<null>("toggle-privacy", () => togglePrivacy(), [togglePrivacy]);
 
   useEffect(() => {
     const note = notes.find((n) => n.id === activeId);
     invoke("set_privacy_menu_state", { isPrivate: note?.private ?? false }).catch(console.error);
   }, [activeId, notes]);
 
-  useEffect(() => {
-    let active = true;
-    let unlisten: (() => void) | undefined;
-    listen<string>("update-available", (event) => {
-      if (active) setUpdateVersion(event.payload);
-    }).then((fn) => {
-      unlisten = fn;
-      if (!active) unlisten();
-    });
-    return () => { active = false; unlisten?.(); };
-  }, []);
+  useTauriEvent<string>("update-available", (v) => setUpdateVersion(v));
 
   const handleInstallUpdate = () => {
     setUpdating(true);
