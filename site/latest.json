@@ -1,15 +1,15 @@
 {
-  "version": "1.0.3",
-  "notes": "Automatic update checks every 5 minutes with a New Release button; privacy toolbar toggle",
-  "pub_date": "2026-06-19T00:00:00Z",
+  "version": "1.0.4",
+  "notes": "Keyword search in the active note; automatic update checks; privacy toolbar toggle",
+  "pub_date": "2026-06-21T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkl4RFJiYlBab0NDTUplNFZBYlZ1WnExNERPdFNkK3N4YVh5Y0dNelRiTXE3ajZmbXZPL0EvRExLS0U0bGxjQ2VWOWRXb0RuYjFydGttSmZCMDFCcHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMzY4NjMwCWZpbGU6U2NyYXRjaFBhZF8wLjEuMF94NjQtc2V0dXAuZXhlCmFNU0kyRmY1R0N5eStuYW5ENFRGNFVMMFMvZ01TanBoQTVWYXc4VjRlYnlNQVl3OVIrL0RYeUxmSFZ6N0RROU82RHp3bWczT0t4U1pRbWtXU2VrSURnPT0K",
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkRRSmNycjJ5TGNzYWQrOUhFUHNybE1vNm12OGpsVG9xdUpGUGQ0UEF6YzdDMUVDU1AxMU9iZG5RNVFFdjFUVHpLUkYyckxGSDNnU2l2Z240a3lqc2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxOTE0ODI5CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CjhHY0dQaExGdmpRR2hHWDNoV2FKdUx5TmdJalhpRXdjTnM1TEw3QWJ0ejkrdDVNZHZyb1RrN3NzRng1VkViZVJDdER3aHZQeG1zTFkvS1J2ZEF0SkF3PT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.3/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkhYZEl1N1pESXBsWVY4U0hRVElXem5SQi8vRGZ2UU55WmVQeDE2dW5yQU5aU0paTGFKcWduMDBScWtjT2tPZ1BGUHlNWm5ySVVFbTZtTDBCcldNZGdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMDYzODQ1CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CnRHUmUxemdrMWl5NlQySE40NEVrTkJTK1UxRXRoUHh3UW8vTFN5c21kcG9UOFJSRUkwY1NSbUROanBDRmc4Nlk0dk9Nd09QQUNzK1R2SmRvVm95d0RBPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.4/ScratchPad.app.tar.gz"
     }
   }
 }
