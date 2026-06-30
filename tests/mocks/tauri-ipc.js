@@ -1,6 +1,7 @@
 (function () {
   // In-memory state
   var notes = [];
+  var screenshots = [];
   var eventListeners = {};  // event -> [handlerCallbackId, ...]
   var eventHandleMap = {};  // eventHandle -> { event, handlerCallbackId }
   var callbackRegistry = {};
@@ -78,6 +79,27 @@
       case "install_update":
         return Promise.resolve(null);
 
+      case "list_screenshots":
+        return Promise.resolve(JSON.parse(JSON.stringify(screenshots)));
+
+      case "take_screenshot": {
+        var shot = {
+          name: "shot-" + nextId++ + ".png",
+          // 1x1 transparent PNG
+          data_url:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/A0kAAAAAElFTkSuQmCC",
+        };
+        screenshots.unshift(shot);
+        return Promise.resolve(JSON.parse(JSON.stringify(shot)));
+      }
+
+      case "copy_screenshot":
+        return Promise.resolve(null);
+
+      case "delete_screenshot":
+        screenshots = screenshots.filter(function (s) { return s.name !== args.name; });
+        return Promise.resolve(null);
+
       // Tauri event system: listen() calls invoke("plugin:event|listen", { event, handler: callbackId })
       case "plugin:event|listen": {
         var event = args.event;
@@ -139,6 +161,7 @@
 
   window.__TEST_RESET__ = function () {
     notes = [];
+    screenshots = [];
     eventListeners = {};
     eventHandleMap = {};
     callbackRegistry = {};

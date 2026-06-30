@@ -10,6 +10,11 @@ interface Note {
   private: boolean;
 }
 
+interface Screenshot {
+  name: string;
+  data_url: string;
+}
+
 // Subscribe to a Tauri event for the component's lifetime, guarding against the
 // async listen() resolving after unmount.
 function useTauriEvent<T>(event: string, handler: (payload: T) => void, deps: React.DependencyList = []) {
@@ -39,6 +44,9 @@ export default function App() {
   const [opacity, setOpacity] = useState(1.0);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const [showScreens, setShowScreens] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(true);
@@ -102,6 +110,50 @@ export default function App() {
   }, [activeId, notes]);
 
   useTauriEvent<string>("update-available", (v) => setUpdateVersion(v));
+
+  useEffect(() => {
+    invoke<Screenshot[]>("list_screenshots").then(setScreenshots).catch(console.error);
+  }, []);
+
+  const handleScreenshot = async () => {
+    setCapturing(true);
+    try {
+      const shot = await invoke<Screenshot | null>("take_screenshot");
+      if (shot) {
+        setScreenshots((prev) => [shot, ...prev.filter((s) => s.name !== shot.name)]);
+        setShowScreens(true);
+      }
+    } catch (err) {
+      console.error("Screenshot failed:", err);
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  // Global ⌃⌘4 hotkey routes through the same capture flow as the 📷 button.
+  // Guard against re-entrancy so a held key doesn't stack capture sessions.
+  useTauriEvent<null>("take-screenshot", () => { if (!capturing) handleScreenshot(); }, [capturing]);
+
+  const copyScreenshot = (name: string) =>
+    invoke("copy_screenshot", { name }).catch(console.error);
+
+  const deleteScreenshot = async (name: string) => {
+    try {
+      await invoke("delete_screenshot", { name });
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+    setScreenshots((prev) => {
+      const next = prev.filter((s) => s.name !== name);
+      if (next.length === 0) setShowScreens(false);
+      return next;
+    });
+  };
+
+  const openNote = (id: string) => {
+    setShowScreens(false);
+    setActiveId(id);
+  };
 
   const handleInstallUpdate = () => {
     setUpdating(true);
@@ -278,12 +330,26 @@ export default function App() {
     <div style={styles.root} data-testid="app-root">
       <div style={styles.tabBar}>
         <div style={styles.tabs}>
+          {screenshots.length > 0 && (
+            <div
+              onClick={() => setShowScreens(true)}
+              data-testid="screenshots-tab"
+              data-active={showScreens ? "true" : "false"}
+              style={{
+                ...styles.tab,
+                ...(showScreens ? styles.tabActive : {}),
+                minWidth: "auto",
+              }}
+            >
+              <span style={styles.tabTitle}>📷 Screenshots ({screenshots.length})</span>
+            </div>
+          )}
           {notes.map((note) => (
             <div
               key={note.id}
-              onClick={() => setActiveId(note.id)}
+              onClick={() => openNote(note.id)}
               data-testid="tab"
-              data-active={note.id === activeId ? "true" : "false"}
+              data-active={!showScreens && note.id === activeId ? "true" : "false"}
               style={{
                 ...styles.tab,
                 ...(note.id === activeId ? styles.tabActive : {}),
@@ -343,7 +409,7 @@ export default function App() {
             {updating ? "Updating…" : `⬆ New Release ${updateVersion}`}
           </button>
         )}
-        {activeNote && !activeNote.private && (
+        {!showScreens && activeNote && !activeNote.private && (
           <button
             onClick={() => {
               setSearchOpen((v) => !v);
@@ -356,7 +422,16 @@ export default function App() {
             🔍
           </button>
         )}
-        {activeNote && (
+        <button
+          onClick={handleScreenshot}
+          disabled={capturing}
+          style={{ ...styles.addButton, fontSize: 15 }}
+          title="Take screenshot — ⌃⌘4 (copies to clipboard)"
+          data-testid="screenshot-button"
+        >
+          📷
+        </button>
+        {!showScreens && activeNote && (
           <button
             onClick={togglePrivacy}
             style={{ ...styles.addButton, fontSize: 15, ...(activeNote.private ? styles.privacyActive : {}) }}
@@ -371,7 +446,7 @@ export default function App() {
         </button>
       </div>
 
-      {searchOpen && activeNote && !activeNote.private && (
+      {!showScreens && searchOpen && activeNote && !activeNote.private && (
         <div style={styles.searchBar}>
           <input
             ref={searchRef}
@@ -406,7 +481,31 @@ export default function App() {
       )}
 
       <div style={styles.editor}>
-        {activeNote ? (
+        {showScreens ? (
+          <div style={styles.gallery} data-testid="gallery">
+            {screenshots.map((s) => (
+              <div key={s.name} style={styles.shotCard} data-testid="shot-card">
+                <img src={s.data_url} alt={s.name} style={styles.shotImg} />
+                <div style={styles.shotActions}>
+                  <button
+                    onClick={() => copyScreenshot(s.name)}
+                    style={styles.shotBtn}
+                    data-testid="shot-copy"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => deleteScreenshot(s.name)}
+                    style={styles.shotBtn}
+                    data-testid="shot-delete"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeNote ? (
           activeNote.private ? (
             <textarea
               value={"•".repeat(content.length)}
@@ -600,6 +699,45 @@ function getStyles(theme: "dark" | "light", opacity: number): Record<string, Rea
       fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', monospace",
       resize: "none",
       outline: "none",
+    },
+    gallery: {
+      flex: 1,
+      overflowY: "auto",
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+      gap: 12,
+      padding: 16,
+      alignContent: "start",
+    },
+    shotCard: {
+      display: "flex",
+      flexDirection: "column",
+      border: `1px solid ${dark ? "#474747" : "#d0d0d0"}`,
+      borderRadius: 4,
+      overflow: "hidden",
+      background: dark ? "rgba(45,45,48,1)" : "rgba(248,248,248,1)",
+    },
+    shotImg: {
+      width: "100%",
+      height: 120,
+      objectFit: "contain",
+      background: dark ? "#1e1e1e" : "#fff",
+    },
+    shotActions: {
+      display: "flex",
+      gap: 6,
+      padding: 6,
+      justifyContent: "center",
+    },
+    shotBtn: {
+      flex: 1,
+      background: "transparent",
+      border: `1px solid ${dark ? "#555" : "#ccc"}`,
+      borderRadius: 3,
+      color: dark ? "#ccc" : "#444",
+      cursor: "pointer",
+      fontSize: 12,
+      padding: "3px 0",
     },
     empty: {
       flex: 1,

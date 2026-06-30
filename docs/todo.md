@@ -3,6 +3,9 @@
 
 
 #done
+##Screenshots
+Take screenshots (📷 button or ⌃⌘4 global hotkey) via native macOS `screencapture -i`; the PNG is copied to the clipboard and saved to `~/ScratchPad/screenshots/`. A dedicated Screenshots tab shows a thumbnail gallery with per-image Copy and Delete. (v1.0.8)
+
 ##Tab renaming
 Already supported via double-click on the tab title (inline edit, Enter to confirm, Esc to cancel). Added a "Double-click to rename" tooltip for discoverability. (v1.0.7)
 

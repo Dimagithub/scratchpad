@@ -181,6 +181,126 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// --- Screenshots ---------------------------------------------------------
+// Native macOS capture (`screencapture -i`) into ~/ScratchPad/screenshots,
+// copied to the clipboard via osascript. No extra crates: PNGs are returned
+// to the UI as base64 data URLs.
+
+#[derive(Serialize, Clone, Debug)]
+pub struct Screenshot {
+    pub name: String,
+    pub data_url: String,
+}
+
+fn screenshots_dir() -> PathBuf {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join("ScratchPad").join("screenshots")
+}
+
+fn base64_encode(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    for chunk in bytes.chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
+        out.push(TABLE[(n >> 18 & 63) as usize] as char);
+        out.push(TABLE[(n >> 12 & 63) as usize] as char);
+        out.push(if chunk.len() > 1 { TABLE[(n >> 6 & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 2 { TABLE[(n & 63) as usize] as char } else { '=' });
+    }
+    out
+}
+
+fn read_screenshot(path: &std::path::Path) -> Option<Screenshot> {
+    let bytes = fs::read(path).ok()?;
+    Some(Screenshot {
+        name: path.file_name()?.to_string_lossy().into_owned(),
+        data_url: format!("data:image/png;base64,{}", base64_encode(&bytes)),
+    })
+}
+
+// Put a PNG file on the macOS clipboard. No-op (Err) elsewhere.
+fn copy_png_to_clipboard(path: &std::path::Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            "set the clipboard to (read (POSIX file \"{}\") as «class PNGf»)",
+            path.display()
+        );
+        std::process::Command::new("osascript")
+            .args(["-e", &script])
+            .status()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        Err("Clipboard image copy is only supported on macOS".into())
+    }
+}
+
+#[tauri::command]
+fn take_screenshot() -> Result<Option<Screenshot>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let dir = screenshots_dir();
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let path = dir.join(format!("shot-{}.png", now));
+        // -i: interactive region/window selection. User can press Esc to cancel.
+        std::process::Command::new("screencapture")
+            .args(["-i", &path.to_string_lossy()])
+            .status()
+            .map_err(|e| e.to_string())?;
+        if !path.exists() {
+            return Ok(None); // cancelled
+        }
+        copy_png_to_clipboard(&path)?;
+        Ok(read_screenshot(&path))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Screenshots are only supported on macOS".into())
+    }
+}
+
+#[tauri::command]
+fn list_screenshots() -> Vec<Screenshot> {
+    let mut names: Vec<PathBuf> = fs::read_dir(screenshots_dir())
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().map_or(false, |e| e == "png"))
+        .collect();
+    names.sort(); // shot-<millis>.png sorts chronologically
+    names.iter().rev().filter_map(|p| read_screenshot(p)).collect()
+}
+
+// Guard against path traversal: only a bare filename inside the dir is allowed.
+fn screenshot_path(name: &str) -> Result<PathBuf, String> {
+    if name.contains('/') || name.contains('\\') || name.contains("..") {
+        return Err("Invalid screenshot name".into());
+    }
+    Ok(screenshots_dir().join(name))
+}
+
+#[tauri::command]
+fn copy_screenshot(name: String) -> Result<(), String> {
+    copy_png_to_clipboard(&screenshot_path(&name)?)
+}
+
+#[tauri::command]
+fn delete_screenshot(name: String) -> Result<(), String> {
+    fs::remove_file(screenshot_path(&name)?).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -454,6 +574,15 @@ pub fn run() {
                 }
             });
 
+            // Global screenshot hotkey (⌃⌘4). The UI listens for "take-screenshot"
+            // and runs the same capture flow as the 📷 button.
+            let screenshot_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::META), Code::Digit4);
+            let _ = app.global_shortcut().on_shortcut(screenshot_shortcut, |app, _shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    let _ = app.emit("take-screenshot", ());
+                }
+            });
+
             let app_handle = app.handle().clone();
             if let Some(window) = app.get_webview_window("main") {
                 window.on_window_event(move |event| {
@@ -495,6 +624,10 @@ pub fn run() {
             get_settings,
             set_privacy_menu_state,
             install_update,
+            take_screenshot,
+            list_screenshots,
+            copy_screenshot,
+            delete_screenshot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -567,6 +700,24 @@ mod tests {
         assert_eq!(loaded.content, original.content);
         assert_eq!(loaded.created_at, original.created_at);
         assert!(loaded.private);
+    }
+
+    #[test]
+    fn base64_known_vectors() {
+        // RFC 4648 test vectors + padding edge cases
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"f"), "Zg==");
+        assert_eq!(base64_encode(b"fo"), "Zm8=");
+        assert_eq!(base64_encode(b"foo"), "Zm9v");
+        assert_eq!(base64_encode(b"Man"), "TWFu");
+        assert_eq!(base64_encode(&[0u8, 255, 128]), "AP+A");
+    }
+
+    #[test]
+    fn screenshot_path_rejects_traversal() {
+        assert!(screenshot_path("../secret.png").is_err());
+        assert!(screenshot_path("a/b.png").is_err());
+        assert!(screenshot_path("shot-123.png").is_ok());
     }
 
     #[test]
