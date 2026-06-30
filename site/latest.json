@@ -1,15 +1,15 @@
 {
-  "version": "1.0.7",
-  "notes": "macOS opacity/transparency fix; tab rename hint; keyword search; automatic update checks",
-  "pub_date": "2026-06-21T00:00:00Z",
+  "version": "1.0.8",
+  "notes": "Screenshots: capture to clipboard (📷 / ⌃⌘4) with a Screenshots tab gallery",
+  "pub_date": "2026-06-30T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkl4RFJiYlBab0NDTUplNFZBYlZ1WnExNERPdFNkK3N4YVh5Y0dNelRiTXE3ajZmbXZPL0EvRExLS0U0bGxjQ2VWOWRXb0RuYjFydGttSmZCMDFCcHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMzY4NjMwCWZpbGU6U2NyYXRjaFBhZF8wLjEuMF94NjQtc2V0dXAuZXhlCmFNU0kyRmY1R0N5eStuYW5ENFRGNFVMMFMvZ01TanBoQTVWYXc4VjRlYnlNQVl3OVIrL0RYeUxmSFZ6N0RROU82RHp3bWczT0t4U1pRbWtXU2VrSURnPT0K",
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkhLN0Q3RGJ1alY1ODNBWm1KZWg0Y21pUi9zYWhOblZzZGl6MzUyYTJlQys2UHpYSllzaUFaY0c5QS9YaTRPeTlPVTNSVk9KRlVjejRTQXFTTlVqQWdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMDc4ODMyCWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CkJOOGFKQmlZd2NpYjN2VjB0ODVnM01ZQmtyN0dFaXZzY2QwckVSdlBJNDZHY2V1emxZUFYzbjhDM0U0NUFyTkhMU3p6RkxaeTBQVHI4bEtRS3JMSERnPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.7/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkNYK1l3ZjZwUDNmZkxJK3N0ODc5MHV3TFoyWW5FQXBzd1NVbnJQVEQ3b0hPUElkMDNKUi9ycThyc0dTWXc0ZWJrL3RWSklCcGpwYWZhM1AzM0ZlbFE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyODU1NDA4CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CnY1eStZMmU2M0EvSGh6STIyOGhpYi92MlFhVm43ajVYSTNTMjhiTTU3clptejNQVVZNSEoraGFmdzdOUm9Qb1M2NGZaZ2dDWjAwN0hFMjVERG9zUkNnPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.8/ScratchPad.app.tar.gz"
     }
   }
 }
