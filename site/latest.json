@@ -1,6 +1,6 @@
 {
-  "version": "1.0.9",
-  "notes": "Markdown preview + validate; tab position Top/Left/Right; screenshot fixes; quick help",
+  "version": "1.0.10",
+  "notes": "Quick Help in View menu; modern floating copy button; cleaner preview icon",
   "pub_date": "2026-07-01T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
@@ -8,8 +8,8 @@
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMk1haHVlaTFISXNydlBoQmN5dU45V0U2TzFWVURVeWRDcGxtNjJBMmVSSjY0MVBKcnNQMEl4MmJwcFhXZmFBcnFQZUMwcldYZGY4Nk9oemhjWFdTQmdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTI1OTAwCWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6ClQyZFIvVkNTZFR2YUlPUXR1dlc1cENBMVE1dHc2RVdJUnBOaFE0RlR2Q0xidlVETDlQTzJYRjBXc0RHcWVHTjRFcUtzcHpDdnNKa21WTTg5VU05cUFnPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.9/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMk16OTlSTkI2SVFJREF3ak9ZQTloaENHeWFHRTFndVl4NlZrTVFqYmtSRDRhcUd1NHJKdlpvTkdqbFBQNEdON3lyQlpOY2NlQnBrODM4RWdPNHR3dUFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTM1MTE3CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CkNqQVhIeGhHVnhnMVJOVzBZQjlTeGIzVlpoYStIUHJPM1AwdkFoeFNPMTBxb290RHlsN3JUbXJ2QWFDc01JM2duelp0eVBBdnBGNzVIbURpK3RtNUJBPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.10/ScratchPad.app.tar.gz"
     }
   }
 }
