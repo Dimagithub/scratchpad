@@ -24,6 +24,7 @@ pub struct Note {
 
 fn default_opacity() -> f64 { 1.0 }
 fn default_theme() -> String { "dark".to_string() }
+fn default_tab_position() -> String { "top".to_string() }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
@@ -35,6 +36,8 @@ pub struct AppSettings {
     pub opacity: f64,
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default = "default_tab_position")]
+    pub tab_position: String,
 }
 
 impl Default for AppSettings {
@@ -44,6 +47,7 @@ impl Default for AppSettings {
             always_on_top: false,
             opacity: 1.0,
             theme: "dark".to_string(),
+            tab_position: "top".to_string(),
         }
     }
 }
@@ -301,6 +305,75 @@ fn delete_screenshot(name: String) -> Result<(), String> {
     fs::remove_file(screenshot_path(&name)?).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn delete_all_screenshots() -> Result<(), String> {
+    let dir = screenshots_dir();
+    for entry in fs::read_dir(&dir).into_iter().flatten().flatten() {
+        let path = entry.path();
+        if path.extension().map_or(false, |e| e == "png") {
+            fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+// Open a screenshot in the OS default viewer (Preview.app on macOS). No-op (Err) elsewhere.
+#[tauri::command]
+fn open_screenshot(name: String) -> Result<(), String> {
+    let path = screenshot_path(&name)?;
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .status()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Opening screenshots is only supported on macOS".into())
+    }
+}
+
+// Copy arbitrary text to the clipboard via pbcopy. Fallback for when
+// navigator.clipboard.writeText is unreliable in the packaged webview.
+#[tauri::command]
+fn copy_text(text: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::io::Write;
+        let mut child = std::process::Command::new("pbcopy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        child
+            .stdin
+            .as_mut()
+            .ok_or("Failed to open pbcopy stdin")?
+            .write_all(text.as_bytes())
+            .map_err(|e| e.to_string())?;
+        child.wait().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = text;
+        Err("Clipboard copy is only supported on macOS".into())
+    }
+}
+
+// Short click played when a screenshot capture is activated (button/hotkey), so
+// there's immediate audible feedback before the crosshair appears. Fire-and-forget.
+#[tauri::command]
+fn play_sound() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("afplay")
+            .arg("/System/Library/Sounds/Pop.aiff")
+            .spawn();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -331,6 +404,7 @@ pub fn run() {
             let initial_aot = settings.always_on_top;
             let initial_opacity = settings.opacity;
             let initial_theme = settings.theme.clone();
+            let initial_tab_position = settings.tab_position.clone();
             drop(settings);
 
             let aot_item = CheckMenuItemBuilder::with_id("always_on_top", "Always on Top")
@@ -351,6 +425,13 @@ pub fn run() {
                 .item(&th_dark).item(&th_light)
                 .build()?;
 
+            let tp_top   = CheckMenuItemBuilder::with_id("tabpos_top",   "Top")  .checked(initial_tab_position == "top").build(app)?;
+            let tp_left  = CheckMenuItemBuilder::with_id("tabpos_left",  "Left") .checked(initial_tab_position == "left").build(app)?;
+            let tp_right = CheckMenuItemBuilder::with_id("tabpos_right", "Right").checked(initial_tab_position == "right").build(app)?;
+            let tab_position_submenu = SubmenuBuilder::new(app, "Tab Position")
+                .item(&tp_top).item(&tp_left).item(&tp_right)
+                .build()?;
+
             let privacy_item = CheckMenuItemBuilder::with_id("toggle_privacy", "Privacy Mode").checked(false).build(app)?;
 
             let view_submenu = SubmenuBuilder::new(app, "View")
@@ -359,6 +440,8 @@ pub fn run() {
                 .item(&opacity_submenu)
                 .separator()
                 .item(&theme_submenu)
+                .separator()
+                .item(&tab_position_submenu)
                 .separator()
                 .item(&privacy_item)
                 .build()?;
@@ -517,6 +600,25 @@ pub fn run() {
                     let _ = app.emit("settings-changed", serde_json::json!({ "theme": theme }));
                 }
 
+                let tab_position_val = match event.id().as_ref() {
+                    "tabpos_top"   => Some("top"),
+                    "tabpos_left"  => Some("left"),
+                    "tabpos_right" => Some("right"),
+                    _ => None,
+                };
+                if let Some(tab_position) = tab_position_val {
+                    let state = app.state::<AppState>();
+                    {
+                        let mut s = state.settings.lock().unwrap();
+                        s.tab_position = tab_position.to_string();
+                        save_settings(&s);
+                    }
+                    for id in &["tabpos_top", "tabpos_left", "tabpos_right"] {
+                        set_menu_check(app, id, event.id().as_ref() == *id);
+                    }
+                    let _ = app.emit("settings-changed", serde_json::json!({ "tab_position": tab_position }));
+                }
+
                 if event.id() == "toggle_privacy" {
                     let _ = app.emit("toggle-privacy", ());
                 }
@@ -628,6 +730,10 @@ pub fn run() {
             list_screenshots,
             copy_screenshot,
             delete_screenshot,
+            delete_all_screenshots,
+            open_screenshot,
+            play_sound,
+            copy_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -644,6 +750,7 @@ mod tests {
         assert!(!s.always_on_top);
         assert_eq!(s.opacity, 1.0);
         assert_eq!(s.theme, "dark");
+        assert_eq!(s.tab_position, "top");
         assert!(s.storage_path.contains("ScratchPad"), "storage_path should use platform default, got: {}", s.storage_path);
     }
 
@@ -655,6 +762,20 @@ mod tests {
         assert!(!s.always_on_top);
         assert_eq!(s.opacity, 1.0);
         assert_eq!(s.theme, "dark");
+        assert_eq!(s.tab_position, "top");
+    }
+
+    #[test]
+    fn tab_position_defaults_and_roundtrips() {
+        // defaults to "top" from empty JSON
+        let s: AppSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.tab_position, "top");
+        // roundtrips a non-default value
+        let mut original = AppSettings::default();
+        original.tab_position = "left".to_string();
+        let json = serde_json::to_string_pretty(&original).unwrap();
+        let loaded: AppSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.tab_position, "left");
     }
 
     #[test]
@@ -666,6 +787,7 @@ mod tests {
             always_on_top: true,
             opacity: 0.75,
             theme: "light".to_string(),
+            tab_position: "right".to_string(),
         };
         let json = serde_json::to_string_pretty(&original).unwrap();
         std::fs::write(&path, &json).unwrap();
@@ -675,6 +797,7 @@ mod tests {
         assert_eq!(loaded.always_on_top, original.always_on_top);
         assert_eq!(loaded.opacity, original.opacity);
         assert_eq!(loaded.theme, original.theme);
+        assert_eq!(loaded.tab_position, original.tab_position);
     }
 
     #[test]

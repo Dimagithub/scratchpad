@@ -11,6 +11,7 @@
     always_on_top: false,
     opacity: 1.0,
     storage_path: "",
+    tab_position: "top",
   };
 
   // Tauri 2 internals: transformCallback stores a JS function and returns a numeric ID.
@@ -96,8 +97,21 @@
       case "copy_screenshot":
         return Promise.resolve(null);
 
+      case "play_sound":
+        return Promise.resolve(null);
+
       case "delete_screenshot":
         screenshots = screenshots.filter(function (s) { return s.name !== args.name; });
+        return Promise.resolve(null);
+
+      case "delete_all_screenshots":
+        screenshots = [];
+        return Promise.resolve(null);
+
+      case "open_screenshot":
+        return Promise.resolve(null);
+
+      case "copy_text":
         return Promise.resolve(null);
 
       // Tauri event system: listen() calls invoke("plugin:event|listen", { event, handler: callbackId })
@@ -171,6 +185,7 @@
       always_on_top: false,
       opacity: 1.0,
       storage_path: "",
+    tab_position: "top",
     };
   };
 })();

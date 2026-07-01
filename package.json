@@ -1,6 +1,6 @@
 {
   "name": "scratchpad",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,9 @@
     "test:rust": "cd src-tauri && cargo test --lib"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@tauri-apps/api": "^2",
+    "dompurify": "^3.4.11",
+    "marked": "^18.0.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

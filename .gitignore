@@ -7,3 +7,5 @@ src-tauri/dist/
 test-results/
 *.swp
 .env
+.herenow/
+.omc/
