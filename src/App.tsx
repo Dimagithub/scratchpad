@@ -122,6 +122,9 @@ export default function App() {
 
   useTauriEvent<string>("update-available", (v) => setUpdateVersion(v));
 
+  // View → Quick Help opens the same modal as the ? key.
+  useTauriEvent<null>("show-help", () => setHelpOpen(true));
+
   useEffect(() => {
     invoke<Screenshot[]>("list_screenshots").then(setScreenshots).catch(console.error);
   }, []);
@@ -179,6 +182,7 @@ export default function App() {
     setShowScreens(false);
   };
 
+  const [noteCopied, setNoteCopied] = useState(false);
   const copyNote = async () => {
     try {
       await navigator.clipboard.writeText(content);
@@ -186,6 +190,8 @@ export default function App() {
       console.error("navigator.clipboard failed, falling back to copy_text:", err);
       invoke("copy_text", { text: content }).catch(console.error);
     }
+    setNoteCopied(true);
+    setTimeout(() => setNoteCopied(false), 1400);
   };
 
   const openNote = (id: string) => {
@@ -498,21 +504,14 @@ export default function App() {
       {canMarkdown && (
         <button
           onClick={() => setShowPreview((v) => !v)}
-          style={{ ...styles.addButton, fontSize: 14, ...(showPreview ? styles.privacyActive : {}) }}
-          title="Toggle preview"
+          style={{ ...styles.addButton, fontSize: 14, display: "inline-flex", alignItems: "center", ...(showPreview ? styles.privacyActive : {}) }}
+          title="Toggle Markdown preview"
           data-testid="md-preview-toggle"
         >
-          👁
-        </button>
-      )}
-      {canMarkdown && (
-        <button
-          onClick={copyNote}
-          style={{ ...styles.addButton, fontSize: 14 }}
-          title="Copy note"
-          data-testid="copy-note"
-        >
-          📋
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <line x1="12" y1="4" x2="12" y2="20" />
+          </svg>
         </button>
       )}
       <button
@@ -534,14 +533,6 @@ export default function App() {
           {activeNote.private ? "🔒" : "🔓"}
         </button>
       )}
-      <button
-        onClick={() => setHelpOpen(true)}
-        style={{ ...styles.addButton, fontSize: 15 }}
-        title="Help"
-        data-testid="help-button"
-      >
-        ?
-      </button>
       <button onClick={handleAdd} style={styles.addButton} data-testid="add-tab">
         +
       </button>
@@ -611,6 +602,24 @@ export default function App() {
 
   const contentArea = (
     <div style={showScreens ? styles.galleryWrap : styles.editor}>
+      {!showScreens && activeNote && !activeNote.private && !showPreview && (
+        <div style={styles.copyFab}>
+          {noteCopied && <span style={styles.copyTip} data-testid="note-copied-tip">Copied</span>}
+          <button
+            onClick={copyNote}
+            className="copy-fab-btn"
+            style={styles.copyBtn}
+            title="Copy note"
+            aria-label="Copy note"
+            data-testid="copy-note"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+        </div>
+      )}
       {showScreens ? (
         <>
           <div style={styles.galleryHeader}>
@@ -680,11 +689,12 @@ export default function App() {
               <div style={styles.previewToolbar}>
                 <button
                   onClick={copyNote}
-                  style={styles.shotBtn}
+                  className="shot-btn"
+                  style={{ ...styles.shotBtn, ...(noteCopied ? styles.shotBtnDone : {}) }}
                   title="Copy source"
                   data-testid="md-preview-copy"
                 >
-                  📋 Copy source
+                  {noteCopied ? "Copied ✓" : "Copy source"}
                 </button>
               </div>
               <div
@@ -785,8 +795,8 @@ export default function App() {
           <div>
             <div style={styles.helpSectionTitle}>Markdown</div>
             <div style={styles.helpRow}>
-              <span>Toggle live preview</span>
-              <span>👁</span>
+              <span>Toggle side-by-side preview</span>
+              <span>▥ button</span>
             </div>
             <div style={styles.helpRow}>
               <span>Lint markdown</span>
@@ -794,7 +804,7 @@ export default function App() {
             </div>
             <div style={styles.helpRow}>
               <span>Copy note text</span>
-              <span>📋</span>
+              <span>copy button, top-right</span>
             </div>
           </div>
           <div>
@@ -1081,6 +1091,41 @@ function getStyles(theme: "dark" | "light", opacity: number, tabPosition: TabPos
       flex: 1,
       display: "flex",
       overflow: "hidden",
+      position: "relative",
+    },
+    copyFab: {
+      position: "absolute",
+      top: 10,
+      right: 14,
+      zIndex: 5,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    copyBtn: {
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 30,
+      height: 30,
+      padding: 0,
+      borderRadius: 8,
+      cursor: "pointer",
+      color: dark ? "#cfd5df" : "#4a4a4a",
+      background: dark ? "rgba(60,60,63,0.85)" : "rgba(255,255,255,0.9)",
+      border: `1px solid ${dark ? "#4a4a4d" : "#d5d5d5"}`,
+      backdropFilter: "blur(4px)",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+    },
+    copyTip: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: "#fff",
+      background: dark ? "#2ea043" : "#1a7f37",
+      padding: "3px 8px",
+      borderRadius: 6,
+      whiteSpace: "nowrap",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
     },
     galleryWrap: {
       flex: 1,

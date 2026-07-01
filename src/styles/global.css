@@ -20,3 +20,16 @@ html, body, #root {
   transform: scale(0.9);
   filter: brightness(1.35);
 }
+
+/* Floating "copy note" button: subtle lift on hover, depress on click. */
+.copy-fab-btn {
+  transition: transform 0.1s ease, filter 0.1s ease, background 0.1s ease;
+  opacity: 0.85;
+}
+.copy-fab-btn:hover {
+  opacity: 1;
+  filter: brightness(1.08);
+}
+.copy-fab-btn:active {
+  transform: scale(0.88);
+}

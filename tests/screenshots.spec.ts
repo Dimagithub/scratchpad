@@ -94,13 +94,14 @@ test("delete all clears the gallery and closes the tab", async ({ page }) => {
   await expect(page.locator('[data-testid="editor"]')).toBeVisible();
 });
 
-test("copy-note button appears for an active text note and is clickable", async ({ page }) => {
+test("copy-note button appears for an active text note and shows a Copied tip", async ({ page }) => {
   await expect(page.locator('[data-testid="copy-note"]')).toBeVisible();
-  // navigator.clipboard.writeText may be unavailable/unpermitted in this
-  // headless context; the app falls back to invoke("copy_text") (mocked to
-  // resolve null either way). This only verifies the button renders and the
-  // click doesn't throw — real clipboard contents aren't asserted here.
+  await expect(page.locator('[data-testid="note-copied-tip"]')).toHaveCount(0);
+  // navigator.clipboard may be unavailable headless; app falls back to copy_text
+  // (mocked). We assert the transient "Copied" tip appears then clears.
   await page.locator('[data-testid="copy-note"]').click();
+  await expect(page.locator('[data-testid="note-copied-tip"]')).toHaveText("Copied");
+  await expect(page.locator('[data-testid="note-copied-tip"]')).toHaveCount(0, { timeout: 2500 });
 });
 
 test("copy-note button is hidden while viewing screenshots", async ({ page }) => {

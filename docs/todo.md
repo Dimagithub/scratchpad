@@ -2,6 +2,9 @@
 
 
 #done
+##UI polish: help in View menu, floating copy button, better preview icon
+Moved Quick Help to View menu (was a toolbar button; ? key still works). Copy-note is now a modern floating button in the note's top-right corner with a "Copied" tooltip. Markdown preview toggle icon changed from an eye to a split-view icon. (v1.0.10)
+
 ##Quick help
 "?" toolbar button (or the ? key) opens a dismissible Quick Help modal covering basic usage and keyboard shortcuts (Notes, Find, Screenshots, Markdown, Privacy, Window & View). (v1.0.9)
 

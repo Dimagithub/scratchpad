@@ -433,6 +433,7 @@ pub fn run() {
                 .build()?;
 
             let privacy_item = CheckMenuItemBuilder::with_id("toggle_privacy", "Privacy Mode").checked(false).build(app)?;
+            let help_item = MenuItemBuilder::with_id("quick_help", "Quick Help").build(app)?;
 
             let view_submenu = SubmenuBuilder::new(app, "View")
                 .item(&aot_item)
@@ -444,6 +445,8 @@ pub fn run() {
                 .item(&tab_position_submenu)
                 .separator()
                 .item(&privacy_item)
+                .separator()
+                .item(&help_item)
                 .build()?;
 
             let about = MenuItemBuilder::with_id("about", "About ScratchPad").build(app)?;
@@ -621,6 +624,10 @@ pub fn run() {
 
                 if event.id() == "toggle_privacy" {
                     let _ = app.emit("toggle-privacy", ());
+                }
+
+                if event.id() == "quick_help" {
+                    let _ = app.emit("show-help", ());
                 }
             });
 

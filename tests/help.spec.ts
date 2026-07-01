@@ -11,12 +11,16 @@ test.beforeEach(async ({ page }) => {
   await load(page);
 });
 
-test("help button is visible", async ({ page }) => {
-  await expect(page.locator('[data-testid="help-button"]')).toBeVisible();
+// The help entry lives in the native View menu, which emits "show-help".
+const openViaMenu = (page: Page) =>
+  page.evaluate(() => window.__TEST_EMIT__("show-help", null));
+
+test("there is no help button in the toolbar", async ({ page }) => {
+  await expect(page.locator('[data-testid="help-button"]')).toHaveCount(0);
 });
 
-test("clicking help opens the modal with recognizable content", async ({ page }) => {
-  await page.locator('[data-testid="help-button"]').click();
+test("View → Quick Help opens the modal with recognizable content", async ({ page }) => {
+  await openViaMenu(page);
   const modal = page.locator('[data-testid="help-modal"]');
   await expect(modal).toBeVisible();
   await expect(modal).toContainText("⌘F");
@@ -24,23 +28,22 @@ test("clicking help opens the modal with recognizable content", async ({ page })
 });
 
 test("the × button closes the help modal", async ({ page }) => {
-  await page.locator('[data-testid="help-button"]').click();
+  await openViaMenu(page);
   await expect(page.locator('[data-testid="help-modal"]')).toBeVisible();
   await page.locator('[data-testid="help-close"]').click();
   await expect(page.locator('[data-testid="help-modal"]')).toHaveCount(0);
 });
 
 test("pressing Escape closes the help modal", async ({ page }) => {
-  await page.locator('[data-testid="help-button"]').click();
+  await openViaMenu(page);
   await expect(page.locator('[data-testid="help-modal"]')).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="help-modal"]')).toHaveCount(0);
 });
 
 test("clicking the backdrop closes the help modal", async ({ page }) => {
-  await page.locator('[data-testid="help-button"]').click();
+  await openViaMenu(page);
   await expect(page.locator('[data-testid="help-modal"]')).toBeVisible();
-  // click near the top-left corner of the backdrop, away from the centered card
   await page.locator('[data-testid="help-modal"]').click({ position: { x: 5, y: 5 } });
   await expect(page.locator('[data-testid="help-modal"]')).toHaveCount(0);
 });
