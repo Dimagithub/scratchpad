@@ -38,6 +38,8 @@ pub struct AppSettings {
     pub theme: String,
     #[serde(default = "default_tab_position")]
     pub tab_position: String,
+    #[serde(default)]
+    pub last_import_export_dir: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -48,6 +50,7 @@ impl Default for AppSettings {
             opacity: 1.0,
             theme: "dark".to_string(),
             tab_position: "top".to_string(),
+            last_import_export_dir: None,
         }
     }
 }
@@ -149,6 +152,33 @@ fn save_settings(settings: &AppSettings) {
     if let Ok(json) = serde_json::to_string_pretty(settings) {
         let _ = fs::write(&path, json);
     }
+}
+
+// Strips characters unsafe/awkward in filenames, trims whitespace, and
+// falls back to "Untitled" so Export never offers an empty filename.
+fn sanitize_filename(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .filter(|c| *c != '/' && *c != '\\' && !c.is_control())
+        .collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        "Untitled".to_string()
+    } else {
+        trimmed.chars().take(100).collect()
+    }
+}
+
+// preview_on reflects whether markdown preview is *currently* toggled on for
+// the active note (not whether it was ever used) — see features-plan.md.
+fn default_export_filename(title: &str, preview_on: bool) -> String {
+    let ext = if preview_on { "md" } else { "txt" };
+    format!("{}.{}", sanitize_filename(title), ext)
+}
+
+#[tauri::command]
+fn export_note(path: String, content: String) -> Result<(), String> {
+    fs::write(path, content).map_err(|e| format!("Failed to export note: {}", e))
 }
 
 #[tauri::command]
@@ -741,6 +771,7 @@ pub fn run() {
             open_screenshot,
             play_sound,
             copy_text,
+            export_note,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -795,6 +826,7 @@ mod tests {
             opacity: 0.75,
             theme: "light".to_string(),
             tab_position: "right".to_string(),
+            last_import_export_dir: None,
         };
         let json = serde_json::to_string_pretty(&original).unwrap();
         std::fs::write(&path, &json).unwrap();
@@ -805,6 +837,7 @@ mod tests {
         assert_eq!(loaded.opacity, original.opacity);
         assert_eq!(loaded.theme, original.theme);
         assert_eq!(loaded.tab_position, original.tab_position);
+        assert_eq!(loaded.last_import_export_dir, original.last_import_export_dir);
     }
 
     #[test]
@@ -858,5 +891,53 @@ mod tests {
         assert!(path.contains("ScratchPad"), "should contain ScratchPad dir, got: {}", path);
         // HOME or USERPROFILE must be set in any normal dev/test environment
         assert!(!path.starts_with("./ScratchPad"), "should not fall back to relative path, got: {}", path);
+    }
+
+    #[test]
+    fn settings_default_last_import_export_dir_is_none() {
+        let s: AppSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(s.last_import_export_dir, None);
+    }
+
+    #[test]
+    fn settings_last_import_export_dir_roundtrips() {
+        let mut original = AppSettings::default();
+        original.last_import_export_dir = Some("/Users/dima/Documents".to_string());
+        let json = serde_json::to_string_pretty(&original).unwrap();
+        let loaded: AppSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.last_import_export_dir, original.last_import_export_dir);
+    }
+
+    #[test]
+    fn sanitize_filename_strips_slashes_and_trims() {
+        assert_eq!(sanitize_filename("Notepad Jul 3, 10:30"), "Notepad Jul 3, 10:30");
+        assert_eq!(sanitize_filename("a/b/c"), "abc");
+        assert_eq!(sanitize_filename("  padded  "), "padded");
+        assert_eq!(sanitize_filename(""), "Untitled");
+        assert_eq!(sanitize_filename("   "), "Untitled");
+    }
+
+    #[test]
+    fn default_export_filename_picks_extension_from_preview_state() {
+        assert_eq!(default_export_filename("My Note", false), "My Note.txt");
+        assert_eq!(default_export_filename("My Note", true), "My Note.md");
+        assert_eq!(default_export_filename("", true), "Untitled.md");
+    }
+
+    #[test]
+    fn export_note_writes_exact_content() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("out.txt");
+        export_note(path.to_string_lossy().into_owned(), "hello world".to_string()).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "hello world");
+    }
+
+    #[test]
+    fn export_note_overwrites_existing_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("out.txt");
+        std::fs::write(&path, "old").unwrap();
+        export_note(path.to_string_lossy().into_owned(), "new".to_string()).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
     }
 }
