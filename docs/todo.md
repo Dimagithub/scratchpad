@@ -1,4 +1,6 @@
 #approved
+1. Add ability to save as file
+2. Add ability to open any file such as csv, md, txt, json with ScratchPad and associate it in Mac OS
 
 
 #done
