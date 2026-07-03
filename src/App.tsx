@@ -144,6 +144,12 @@ export default function App() {
     });
   });
 
+  useTauriEvent<Note>("note-imported", (note) => {
+    setNotes((prev) => [...prev, note]);
+    setShowScreens(false);
+    setActiveId(note.id);
+  });
+
   useEffect(() => {
     invoke<Screenshot[]>("list_screenshots").then(setScreenshots).catch(console.error);
   }, []);
