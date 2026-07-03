@@ -67,6 +67,8 @@ impl AppSettings {
 #[derive(Default)]
 pub struct AppState {
     pub settings: Mutex<AppSettings>,
+    pub active_note_title: Mutex<String>,
+    pub preview_on: Mutex<bool>,
 }
 
 fn load_notes(path: &str) -> Vec<Note> {
@@ -198,6 +200,12 @@ fn set_menu_check(app: &tauri::AppHandle, id: &str, checked: bool) {
 #[tauri::command]
 fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
     set_menu_check(&app, "toggle_privacy", is_private);
+}
+
+#[tauri::command]
+fn set_active_note_context(title: String, preview_on: bool, state: State<AppState>) {
+    *state.active_note_title.lock().unwrap() = title;
+    *state.preview_on.lock().unwrap() = preview_on;
 }
 
 // Triggered by the "New Release" button. Re-checks (the Update handle isn't kept
@@ -488,8 +496,13 @@ pub fn run() {
                 .quit()
                 .build()?;
 
+            let import_file_item = MenuItemBuilder::with_id("import_file", "Import…").build(app)?;
+            let export_note_item = MenuItemBuilder::with_id("export_note", "Export…").build(app)?;
             let open_notes_folder = MenuItemBuilder::with_id("open_notes_folder", "Open Notes Folder").build(app)?;
             let file_submenu = SubmenuBuilder::new(app, "File")
+                .item(&import_file_item)
+                .item(&export_note_item)
+                .separator()
                 .item(&open_notes_folder)
                 .separator()
                 .close_window()
@@ -532,6 +545,30 @@ pub fn run() {
                         .unwrap_or_else(|_| "./ScratchPad".to_string());
                     let _ = std::fs::create_dir_all(&folder);
                     let _ = app.shell().open(&folder, None);
+                }
+                if event.id() == "export_note" {
+                    let state = app.state::<AppState>();
+                    let default_name = {
+                        let title = state.active_note_title.lock().unwrap().clone();
+                        let preview_on = *state.preview_on.lock().unwrap();
+                        default_export_filename(&title, preview_on)
+                    };
+                    let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
+
+                    let mut dialog = app.dialog().file().set_file_name(&default_name);
+                    if let Some(dir) = &last_dir {
+                        dialog = dialog.set_directory(dir);
+                    }
+                    if let Some(picked) = dialog.blocking_save_file() {
+                        if let Ok(path) = picked.into_path() {
+                            if let Some(parent) = path.parent() {
+                                let mut s = state.settings.lock().unwrap();
+                                s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
+                                save_settings(&s);
+                            }
+                            let _ = app.emit("export-note-to", path.to_string_lossy().into_owned());
+                        }
+                    }
                 }
                 if event.id() == "check_updates" {
                     let handle = app.clone();
@@ -772,6 +809,7 @@ pub fn run() {
             play_sound,
             copy_text,
             export_note,
+            set_active_note_context,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
