@@ -84,6 +84,11 @@ export default function App() {
     activeIdRef.current = activeId;
   }, [activeId]);
 
+  const contentRef = useRef("");
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
   useEffect(() => {
     invoke<{ theme: string; opacity: number; tab_position?: string }>("get_settings")
       .then((s) => {
@@ -120,10 +125,24 @@ export default function App() {
     invoke("set_privacy_menu_state", { isPrivate: note?.private ?? false }).catch(console.error);
   }, [activeId, notes]);
 
+  useEffect(() => {
+    const note = notes.find((n) => n.id === activeId);
+    invoke("set_active_note_context", {
+      title: note?.title ?? "",
+      previewOn: showPreview,
+    }).catch(console.error);
+  }, [activeId, notes, showPreview]);
+
   useTauriEvent<string>("update-available", (v) => setUpdateVersion(v));
 
   // View → Quick Help opens the same modal as the ? key.
   useTauriEvent<null>("show-help", () => setHelpOpen(true));
+
+  useTauriEvent<string>("export-note-to", (path) => {
+    invoke("export_note", { path, content: contentRef.current }).catch((err) => {
+      console.error("Export failed:", err);
+    });
+  });
 
   useEffect(() => {
     invoke<Screenshot[]>("list_screenshots").then(setScreenshots).catch(console.error);

@@ -114,6 +114,13 @@
       case "copy_text":
         return Promise.resolve(null);
 
+      case "export_note":
+        window.__TEST_LAST_EXPORT__ = { path: args.path, content: args.content };
+        return Promise.resolve(null);
+
+      case "set_active_note_context":
+        return Promise.resolve(null);
+
       // Tauri event system: listen() calls invoke("plugin:event|listen", { event, handler: callbackId })
       case "plugin:event|listen": {
         var event = args.event;
@@ -176,6 +183,7 @@
   window.__TEST_RESET__ = function () {
     notes = [];
     screenshots = [];
+    window.__TEST_LAST_EXPORT__ = null;
     eventListeners = {};
     eventHandleMap = {};
     callbackRegistry = {};
