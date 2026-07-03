@@ -144,6 +144,45 @@ fn rename_note(note_id: String, new_title: String, settings: State<AppState>) ->
     store_notes(&s.storage_path, &notes)
 }
 
+fn import_file_impl(path: String, settings: &Mutex<AppSettings>) -> Result<Note, String> {
+    let file_path = PathBuf::from(&path);
+    let bytes = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let content = String::from_utf8(bytes).map_err(|_| "Could not read file as text".to_string())?;
+    let title = file_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Untitled")
+        .to_string();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let note = Note {
+        id: uuid::Uuid::new_v4().to_string(),
+        title,
+        content,
+        created_at: now,
+        private: false,
+    };
+
+    let mut s = settings.lock().map_err(|e| e.to_string())?;
+    let mut notes = load_notes(&s.storage_path);
+    notes.push(note.clone());
+    store_notes(&s.storage_path, &notes)?;
+
+    if let Some(parent) = file_path.parent() {
+        s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
+        save_settings(&s);
+    }
+
+    Ok(note)
+}
+
+#[tauri::command]
+fn import_file(path: String, settings: State<AppState>) -> Result<Note, String> {
+    import_file_impl(path, &settings.settings)
+}
+
 fn save_settings(settings: &AppSettings) {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -810,6 +849,7 @@ pub fn run() {
             copy_text,
             export_note,
             set_active_note_context,
+            import_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -977,5 +1017,62 @@ mod tests {
         std::fs::write(&path, "old").unwrap();
         export_note(path.to_string_lossy().into_owned(), "new".to_string()).unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
+    }
+
+    fn test_state_with_storage(path: &std::path::Path) -> AppState {
+        let mut settings = AppSettings::default();
+        settings.storage_path = path.to_string_lossy().into_owned();
+        AppState {
+            settings: Mutex::new(settings),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn import_file_creates_note_with_filename_as_title() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("shopping-list.txt");
+        std::fs::write(&file_path, "milk\neggs").unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let state = test_state_with_storage(&notes_path);
+
+        let note = import_file_impl(file_path.to_string_lossy().into_owned(), &state.settings)
+            .unwrap();
+
+        assert_eq!(note.title, "shopping-list");
+        assert_eq!(note.content, "milk\neggs");
+        assert!(!note.private);
+
+        let stored = load_notes(&notes_path.to_string_lossy());
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].id, note.id);
+    }
+
+    #[test]
+    fn import_file_updates_last_import_export_dir() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("data.csv");
+        std::fs::write(&file_path, "a,b\n1,2").unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let state = test_state_with_storage(&notes_path);
+
+        import_file_impl(file_path.to_string_lossy().into_owned(), &state.settings).unwrap();
+
+        let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
+        assert_eq!(last_dir, Some(dir.path().to_string_lossy().into_owned()));
+    }
+
+    #[test]
+    fn import_file_rejects_non_utf8_bytes() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("binary.txt");
+        std::fs::write(&file_path, [0xFF, 0xFE, 0x00, 0xFF]).unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let state = test_state_with_storage(&notes_path);
+
+        let err = import_file_impl(file_path.to_string_lossy().into_owned(), &state.settings)
+            .unwrap_err();
+
+        assert_eq!(err, "Could not read file as text");
     }
 }
