@@ -875,8 +875,29 @@ pub fn run() {
             set_active_note_context,
             import_file,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Opened { urls } = event {
+                for url in urls {
+                    if let Ok(path) = url.to_file_path() {
+                        let state = app_handle.state::<AppState>();
+                        match import_file(path.to_string_lossy().into_owned(), state) {
+                            Ok(note) => {
+                                let _ = app_handle.emit("note-imported", note);
+                            }
+                            Err(e) => {
+                                let _ = app_handle
+                                    .dialog()
+                                    .message(e)
+                                    .title("Import Failed")
+                                    .blocking_show();
+                            }
+                        }
+                    }
+                }
+            }
+        });
 }
 
 #[cfg(test)]

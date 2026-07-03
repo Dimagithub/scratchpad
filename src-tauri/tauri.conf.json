@@ -37,7 +37,15 @@
       "nsis": {
         "installerHooks": "windows/hooks.nsh"
       }
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["csv", "md", "txt", "json"],
+        "name": "Text Document",
+        "description": "Text file openable by ScratchPad",
+        "role": "Editor"
+      }
+    ]
   },
   "plugins": {
     "updater": {
