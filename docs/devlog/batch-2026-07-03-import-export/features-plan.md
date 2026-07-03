@@ -61,8 +61,10 @@ native save dialog, as a one-time snapshot.
   trim to a reasonable length.
 
 ### Error handling
-- Write failure (permissions, disk full): `app.dialog().message(...)` error
-  dialog, same style as existing error dialogs.
+- Write failure (permissions, disk full): `console.error`, same as every
+  other note-mutation failure in the app today (`save_note`, `rename_note`,
+  `delete_note` all fail silently-to-console, no dialog) — no reason for
+  Export to be the one exception.
 - User cancels the save dialog: no-op, nothing emitted.
 
 ### Tests
