@@ -609,6 +609,30 @@ pub fn run() {
                         }
                     }
                 }
+                if event.id() == "import_file" {
+                    let state = app.state::<AppState>();
+                    let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
+
+                    let mut dialog = app
+                        .dialog()
+                        .file()
+                        .add_filter("Text files", &["csv", "md", "txt", "json"]);
+                    if let Some(dir) = &last_dir {
+                        dialog = dialog.set_directory(dir);
+                    }
+                    if let Some(picked) = dialog.blocking_pick_file() {
+                        if let Ok(path) = picked.into_path() {
+                            match import_file(path.to_string_lossy().into_owned(), app.state::<AppState>()) {
+                                Ok(note) => {
+                                    let _ = app.emit("note-imported", note);
+                                }
+                                Err(e) => {
+                                    let _ = app.dialog().message(e).title("Import Failed").blocking_show();
+                                }
+                            }
+                        }
+                    }
+                }
                 if event.id() == "check_updates" {
                     let handle = app.clone();
                     tauri::async_runtime::spawn(async move {
