@@ -591,6 +591,10 @@ pub fn run() {
                     let _ = std::fs::create_dir_all(&folder);
                     let _ = app.shell().open(&folder, None);
                 }
+                // blocking_save_file()/blocking_pick_file() must not run on the main
+                // thread — it's also the UI event-loop thread, and blocking it here
+                // deadlocks the whole app the moment the dialog needs to deliver its
+                // result back. Do the dialog + resulting I/O on a spawned thread.
                 if event.id() == "export_note" {
                     let state = app.state::<AppState>();
                     let default_name = {
@@ -599,45 +603,52 @@ pub fn run() {
                         default_export_filename(&title, preview_on)
                     };
                     let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
+                    let app_handle = app.clone();
 
-                    let mut dialog = app.dialog().file().set_file_name(&default_name);
-                    if let Some(dir) = &last_dir {
-                        dialog = dialog.set_directory(dir);
-                    }
-                    if let Some(picked) = dialog.blocking_save_file() {
-                        if let Ok(path) = picked.into_path() {
-                            if let Some(parent) = path.parent() {
-                                let mut s = state.settings.lock().unwrap();
-                                s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
-                                save_settings(&s);
-                            }
-                            let _ = app.emit("export-note-to", path.to_string_lossy().into_owned());
+                    std::thread::spawn(move || {
+                        let mut dialog = app_handle.dialog().file().set_file_name(&default_name);
+                        if let Some(dir) = &last_dir {
+                            dialog = dialog.set_directory(dir);
                         }
-                    }
+                        if let Some(picked) = dialog.blocking_save_file() {
+                            if let Ok(path) = picked.into_path() {
+                                if let Some(parent) = path.parent() {
+                                    let state = app_handle.state::<AppState>();
+                                    let mut s = state.settings.lock().unwrap();
+                                    s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
+                                    save_settings(&s);
+                                }
+                                let _ = app_handle.emit("export-note-to", path.to_string_lossy().into_owned());
+                            }
+                        }
+                    });
                 }
                 if event.id() == "import_file" {
                     let state = app.state::<AppState>();
                     let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
+                    let app_handle = app.clone();
 
-                    let mut dialog = app
-                        .dialog()
-                        .file()
-                        .add_filter("Text files", &["csv", "md", "txt", "json"]);
-                    if let Some(dir) = &last_dir {
-                        dialog = dialog.set_directory(dir);
-                    }
-                    if let Some(picked) = dialog.blocking_pick_file() {
-                        if let Ok(path) = picked.into_path() {
-                            match import_file(path.to_string_lossy().into_owned(), app.state::<AppState>()) {
-                                Ok(note) => {
-                                    let _ = app.emit("note-imported", note);
-                                }
-                                Err(e) => {
-                                    let _ = app.dialog().message(e).title("Import Failed").blocking_show();
+                    std::thread::spawn(move || {
+                        let mut dialog = app_handle
+                            .dialog()
+                            .file()
+                            .add_filter("Text files", &["csv", "md", "txt", "json"]);
+                        if let Some(dir) = &last_dir {
+                            dialog = dialog.set_directory(dir);
+                        }
+                        if let Some(picked) = dialog.blocking_pick_file() {
+                            if let Ok(path) = picked.into_path() {
+                                match import_file(path.to_string_lossy().into_owned(), app_handle.state::<AppState>()) {
+                                    Ok(note) => {
+                                        let _ = app_handle.emit("note-imported", note);
+                                    }
+                                    Err(e) => {
+                                        let _ = app_handle.dialog().message(e).title("Import Failed").blocking_show();
+                                    }
                                 }
                             }
                         }
-                    }
+                    });
                 }
                 if event.id() == "check_updates" {
                     let handle = app.clone();
