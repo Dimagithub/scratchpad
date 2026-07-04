@@ -172,15 +172,21 @@ fn import_file_impl(path: String, settings: &Mutex<AppSettings>) -> Result<Note,
 
     if let Some(parent) = file_path.parent() {
         s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
-        save_settings(&s);
     }
 
     Ok(note)
 }
 
+// import_file_impl never touches settings.json on disk (it only mutates the
+// in-memory AppSettings) so unit tests exercising it can't clobber the
+// developer's real ~/ScratchPad/settings.json — only the real command below,
+// which unit tests never call, persists via save_settings.
 #[tauri::command]
 fn import_file(path: String, settings: State<AppState>) -> Result<Note, String> {
-    import_file_impl(path, &settings.settings)
+    let note = import_file_impl(path, &settings.settings)?;
+    let s = settings.settings.lock().map_err(|e| e.to_string())?;
+    save_settings(&s);
+    Ok(note)
 }
 
 fn save_settings(settings: &AppSettings) {
