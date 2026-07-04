@@ -1,15 +1,15 @@
 {
-  "version": "1.0.10",
-  "notes": "Quick Help in View menu; modern floating copy button; cleaner preview icon",
-  "pub_date": "2026-07-01T00:00:00Z",
+  "version": "1.0.11",
+  "notes": "Import/Export files, macOS file association; fixed dialog freeze",
+  "pub_date": "2026-07-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMkl4RFJiYlBab0NDTUplNFZBYlZ1WnExNERPdFNkK3N4YVh5Y0dNelRiTXE3ajZmbXZPL0EvRExLS0U0bGxjQ2VWOWRXb0RuYjFydGttSmZCMDFCcHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxMzY4NjMwCWZpbGU6U2NyYXRjaFBhZF8wLjEuMF94NjQtc2V0dXAuZXhlCmFNU0kyRmY1R0N5eStuYW5ENFRGNFVMMFMvZ01TanBoQTVWYXc4VjRlYnlNQVl3OVIrL0RYeUxmSFZ6N0RROU82RHp3bWczT0t4U1pRbWtXU2VrSURnPT0K",
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMk16OTlSTkI2SVFJREF3ak9ZQTloaENHeWFHRTFndVl4NlZrTVFqYmtSRDRhcUd1NHJKdlpvTkdqbFBQNEdON3lyQlpOY2NlQnBrODM4RWdPNHR3dUFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTM1MTE3CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CkNqQVhIeGhHVnhnMVJOVzBZQjlTeGIzVlpoYStIUHJPM1AwdkFoeFNPMTBxb290RHlsN3JUbXJ2QWFDc01JM2duelp0eVBBdnBGNzVIbURpK3RtNUJBPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.10/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMklpa0s4OVAzOXdoRGsyR29QUzVhckprZTZ3cUZuMms4a05TWXFXejFvdnJ3Q1pXK0RmK3FIS0JWQkhiUmNPajF3eHQ1cStrM3hBazUzdnVBSE5PZFE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMTczNTYzCWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6ClA4L1lCWXdaSy9vRHJsV24yZC9zZU1OKzF4VHM1MHN2TUJjREdzLys2UXpLNmxQWjhBZUtiKzVIaWdjZiszWVM0ZTJDMTZ6QlpzN2UxS0d4Z1RRTENnPT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.11/ScratchPad.app.tar.gz"
     }
   }
 }
