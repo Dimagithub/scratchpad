@@ -1,9 +1,10 @@
 #approved
-1. Add ability to save as file
-2. Add ability to open any file such as csv, md, txt, json with ScratchPad and associate it in Mac OS
 
 
 #done
+##Import / Export files
+File → Export… writes the active note's live content to a file via a native save dialog (defaults to the last-used folder, filename from the note title + `.md`/`.txt` depending on markdown preview). File → Import… reads a `.csv`/`.md`/`.txt`/`.json` file as a new note; double-clicking or "Open With" ScratchPad on one of those file types in Finder does the same via macOS file association. Both are one-time snapshots — no live link is kept between a note and a file afterward. Design/plan/manual verification: `docs/devlog/batch-2026-07-03-import-export/`.
+
 ##UI polish: help in View menu, floating copy button, better preview icon
 Moved Quick Help to View menu (was a toolbar button; ? key still works). Copy-note is now a modern floating button in the note's top-right corner with a "Copied" tooltip. Markdown preview toggle icon changed from an eye to a split-view icon. (v1.0.10)
 

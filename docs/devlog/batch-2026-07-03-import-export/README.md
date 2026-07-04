@@ -4,6 +4,15 @@ Implements the two approved todo.md features: Export a note to a file, and
 Import any `.csv`/`.md`/`.txt`/`.json` file as a new note (menu + macOS file
 association). Design: `features-plan.md`. Implementation plan: `plan.md`.
 
+## Design decision: exporting a private note
+
+The final review flagged that Export ignores the privacy toggle — a private
+note's 🔒 masking only affects the on-screen display (`content` is rendered
+as `•` characters), not the underlying content, so File → Export writes the
+note's real, unmasked text to disk. Decided intentionally: Export is an
+explicit, deliberate user action, so exporting a locked note's real content
+on request is expected behavior, not a leak. No code change made for this.
+
 ## Automated coverage
 - Rust: `export_note`, `import_file` (success, UTF-8 rejection, settings
   `last_import_export_dir` persistence) — `cd src-tauri && cargo test --lib`
