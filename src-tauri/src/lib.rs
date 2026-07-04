@@ -68,7 +68,6 @@ impl AppSettings {
 pub struct AppState {
     pub settings: Mutex<AppSettings>,
     pub active_note_title: Mutex<String>,
-    pub preview_on: Mutex<bool>,
 }
 
 fn load_notes(path: &str) -> Vec<Note> {
@@ -216,11 +215,8 @@ fn sanitize_filename(name: &str) -> String {
     }
 }
 
-// preview_on reflects whether markdown preview is *currently* toggled on for
-// the active note (not whether it was ever used) — see features-plan.md.
-fn default_export_filename(title: &str, preview_on: bool) -> String {
-    let ext = if preview_on { "md" } else { "txt" };
-    format!("{}.{}", sanitize_filename(title), ext)
+fn default_export_filename(title: &str) -> String {
+    format!("{}.md", sanitize_filename(title))
 }
 
 #[tauri::command]
@@ -248,9 +244,8 @@ fn set_privacy_menu_state(is_private: bool, app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn set_active_note_context(title: String, preview_on: bool, state: State<AppState>) {
+fn set_active_note_context(title: String, state: State<AppState>) {
     *state.active_note_title.lock().unwrap() = title;
-    *state.preview_on.lock().unwrap() = preview_on;
 }
 
 // Triggered by the "New Release" button. Re-checks (the Update handle isn't kept
@@ -599,8 +594,7 @@ pub fn run() {
                     let state = app.state::<AppState>();
                     let default_name = {
                         let title = state.active_note_title.lock().unwrap().clone();
-                        let preview_on = *state.preview_on.lock().unwrap();
-                        default_export_filename(&title, preview_on)
+                        default_export_filename(&title)
                     };
                     let last_dir = state.settings.lock().unwrap().last_import_export_dir.clone();
                     let app_handle = app.clone();
@@ -1058,10 +1052,9 @@ mod tests {
     }
 
     #[test]
-    fn default_export_filename_picks_extension_from_preview_state() {
-        assert_eq!(default_export_filename("My Note", false), "My Note.txt");
-        assert_eq!(default_export_filename("My Note", true), "My Note.md");
-        assert_eq!(default_export_filename("", true), "Untitled.md");
+    fn default_export_filename_always_uses_md() {
+        assert_eq!(default_export_filename("My Note"), "My Note.md");
+        assert_eq!(default_export_filename(""), "Untitled.md");
     }
 
     #[test]

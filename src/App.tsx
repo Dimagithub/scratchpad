@@ -127,11 +127,8 @@ export default function App() {
 
   useEffect(() => {
     const note = notes.find((n) => n.id === activeId);
-    invoke("set_active_note_context", {
-      title: note?.title ?? "",
-      previewOn: showPreview,
-    }).catch(console.error);
-  }, [activeId, notes, showPreview]);
+    invoke("set_active_note_context", { title: note?.title ?? "" }).catch(console.error);
+  }, [activeId, notes]);
 
   useTauriEvent<string>("update-available", (v) => setUpdateVersion(v));
 
