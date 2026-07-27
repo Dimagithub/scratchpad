@@ -4,11 +4,16 @@
 > the `macos-private-api` Cargo feature. This relies on a private Apple API, so
 > the app **cannot be distributed via the Mac App Store** — DMG distribution only.
 
-> Builds described here are currently **ad-hoc signed** (no Developer ID), which
-> means Screen Recording permission has to be re-granted on every reinstall. See
-> [`mac-signing-notarization.html`](./mac-signing-notarization.html) (open in a
-> browser) for the one-time Apple Developer Program setup that fixes this, and
-> the env vars to export before `npm run tauri:build` once you have it.
+> Builds are signed with the stable self-signed **"ScratchPad Local Dev"**
+> certificate (see `scripts/install-local.sh`'s original comment), not a real
+> Apple Developer ID. Gatekeeper still shows the "unidentified developer"
+> warning on a fresh install (the `xattr -cr` step below is still needed), but
+> because every build uses the *same* signing identity, TCC grants (Screen
+> Recording) now survive reinstalls and auto-updates — that no longer requires
+> Apple Developer Program enrollment. See
+> [`mac-signing-notarization.html`](./mac-signing-notarization.html) for the
+> optional upgrade path (real notarization, no Gatekeeper warning at all) —
+> currently on hold.
 
 ## Prerequisites
 
@@ -37,8 +42,22 @@ npm install
 
 export TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/scratchpad.key"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+export APPLE_SIGNING_IDENTITY="ScratchPad Local Dev"
 npm run tauri:build
 ```
+
+`APPLE_SIGNING_IDENTITY` is picked up natively by Tauri's macOS bundler — no
+Apple ID or notarization credentials needed for this, it just codesigns with
+that identity instead of ad-hoc. The build log shows
+`Signing with identity "ScratchPad Local Dev"` for the `.app`, and (because
+`APPLE_ID`/`APPLE_PASSWORD`/`APPLE_TEAM_ID` aren't set) a
+`skipping app notarization` warning, which is expected. The certificate must
+exist in this Mac's keychain first — see `scripts/install-local.sh`'s comment
+for how it was created; it isn't tied to any one machine's keychain by
+necessity, but a release built on a machine without the cert installed will
+silently fall back to ad-hoc, so verify with
+`codesign -dvvv src-tauri/target/release/bundle/macos/ScratchPad.app | grep Authority`
+before packaging.
 
 Outputs (because `bundle.createUpdaterArtifacts` is `true` in `tauri.conf.json`):
 - `bundle/dmg/ScratchPad_<ver>_aarch64.dmg` — for the website's manual download
@@ -107,7 +126,7 @@ GitHub Actions deploys the updated `latest.json` automatically.
 ## For future versions (checklist)
 
 1. Bump `version` in `src-tauri/tauri.conf.json` and `package.json`
-2. Build with signing env vars (`TAURI_SIGNING_PRIVATE_KEY_PATH` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) — this auto-generates `ScratchPad.app.tar.gz` + `.sig`
+2. Build with signing env vars (`TAURI_SIGNING_PRIVATE_KEY_PATH` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` + `APPLE_SIGNING_IDENTITY="ScratchPad Local Dev"`) — this auto-generates `ScratchPad.app.tar.gz` + `.sig`, codesigned with the stable identity
 3. Create GitHub Release: `gh release create v<version> <dmg> <app.tar.gz> --title "..." --notes "..."`
 4. Update `site/latest.json` — bump version, pub_date; set the `darwin-aarch64` signature from `.app.tar.gz.sig` and its `url` to the uploaded `.app.tar.gz`
 5. Update `site/index.html` — bump version number and the DMG download URL

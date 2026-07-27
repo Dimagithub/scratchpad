@@ -155,20 +155,26 @@
 <body>
 <main>
   <h1>macOS Code Signing + Notarization</h1>
-  <p class="subtitle">Fixes the repeated Screen Recording permission prompt for ScratchPad releases.</p>
+  <p class="subtitle">Removes the Gatekeeper warning entirely — the permission-prompt loop itself is already fixed.</p>
+
+  <div class="callout ok">
+    <strong>Update:</strong> as of v1.1.1, releases are signed with a stable
+    self-signed identity ("ScratchPad Local Dev" — see <code>docs/mac-release.md</code>),
+    not ad-hoc. That already fixes the repeated Screen Recording prompt: TCC
+    grants now survive reinstalls and auto-updates. What's below is the
+    remaining, optional upgrade — a real Apple Developer ID removes the
+    Gatekeeper "unidentified developer" warning on fresh installs too (the
+    <code>xattr -cr</code> step still needed today). Still on hold.
+  </div>
 
   <div class="callout">
-    <strong>Why this matters.</strong> Release builds are currently <em>ad-hoc signed</em>
-    — no <code>APPLE_SIGNING_IDENTITY</code> is set anywhere in the build. macOS keys
-    TCC grants (like Screen Recording) to the app's code signature, and an ad-hoc
-    signature is a new random identity on every build. Result: every reinstall
-    makes macOS forget the grant, so the prompt keeps coming back no matter how
-    many times you approve it.
-    <br><br>
-    A real <strong>Developer ID Application</strong> certificate has a stable identity
-    across builds, so granting Screen Recording once survives future reinstalls
-    and updates. Notarizing on top of it also removes the Gatekeeper
-    "unidentified developer" warning.
+    <strong>Why a real Developer ID still helps.</strong> The self-signed cert
+    fixes TCC persistence but isn't trusted by Apple, so Gatekeeper still
+    blocks a fresh install until <code>xattr -cr</code> strips the quarantine
+    flag. A real <strong>Developer ID Application</strong> certificate has a
+    stable identity too, but — unlike a self-signed one — Apple trusts it, so
+    once notarized there's no Gatekeeper warning at all, on any Mac, with no
+    manual Terminal step.
   </div>
 
   <h2>The flow</h2>
