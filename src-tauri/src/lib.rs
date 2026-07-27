@@ -70,19 +70,77 @@ pub struct AppState {
     pub active_note_title: Mutex<String>,
 }
 
-fn load_notes(path: &str) -> Vec<Note> {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|c| serde_json::from_str(&c).ok())
-        .unwrap_or_default()
+// Notes are stored one-file-per-note under a `notes/` directory next to
+// `storage_path`, so a save/rename/delete only ever touches the one file it
+// changed instead of rewriting every note's content. Older installs have a
+// single JSON array at `storage_path` — migrate_legacy_if_needed splits that
+// into per-note files (keeping the old file as a `.bak`) the first time any
+// notes command runs.
+fn notes_dir(storage_path: &str) -> PathBuf {
+    match PathBuf::from(storage_path).parent() {
+        Some(parent) => parent.join("notes"),
+        None => PathBuf::from("notes"),
+    }
 }
 
-fn store_notes(path: &str, notes: &[Note]) -> Result<(), String> {
-    if let Some(parent) = PathBuf::from(path).parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
+fn note_file_path(storage_path: &str, id: &str) -> PathBuf {
+    notes_dir(storage_path).join(format!("{}.json", id))
+}
+
+fn migrate_legacy_if_needed(storage_path: &str) {
+    let dir = notes_dir(storage_path);
+    if dir.exists() {
+        return;
     }
-    let json = serde_json::to_string_pretty(notes).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| format!("Failed to write notes: {}", e))
+    let legacy_path = PathBuf::from(storage_path);
+    let Ok(contents) = fs::read_to_string(&legacy_path) else { return };
+    let Ok(notes) = serde_json::from_str::<Vec<Note>>(&contents) else { return };
+    if fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    for note in &notes {
+        if let Ok(json) = serde_json::to_string_pretty(note) {
+            let _ = fs::write(dir.join(format!("{}.json", note.id)), json);
+        }
+    }
+    let _ = fs::rename(&legacy_path, legacy_path.with_extension("json.bak"));
+}
+
+fn load_notes(path: &str) -> Vec<Note> {
+    migrate_legacy_if_needed(path);
+    let mut notes: Vec<Note> = fs::read_dir(notes_dir(path))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| {
+            let p = entry.path();
+            if p.extension().and_then(|e| e.to_str()) != Some("json") {
+                return None;
+            }
+            fs::read_to_string(&p)
+                .ok()
+                .and_then(|c| serde_json::from_str::<Note>(&c).ok())
+        })
+        .collect();
+    notes.sort_by_key(|n| n.created_at);
+    notes
+}
+
+fn write_note(path: &str, note: &Note) -> Result<(), String> {
+    migrate_legacy_if_needed(path);
+    let dir = notes_dir(path);
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create directory: {}", e))?;
+    let json = serde_json::to_string_pretty(note).map_err(|e| e.to_string())?;
+    fs::write(dir.join(format!("{}.json", note.id)), json)
+        .map_err(|e| format!("Failed to write note: {}", e))
+}
+
+fn delete_note_file(path: &str, id: &str) -> Result<(), String> {
+    match fs::remove_file(note_file_path(path, id)) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("Failed to delete note: {}", e)),
+    }
 }
 
 #[tauri::command]
@@ -94,21 +152,13 @@ fn get_notes(settings: State<AppState>) -> Result<Vec<Note>, String> {
 #[tauri::command]
 fn save_note(note: Note, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let mut notes = load_notes(&s.storage_path);
-    if let Some(pos) = notes.iter().position(|n| n.id == note.id) {
-        notes[pos] = note;
-    } else {
-        notes.push(note);
-    }
-    store_notes(&s.storage_path, &notes)
+    write_note(&s.storage_path, &note)
 }
 
 #[tauri::command]
 fn delete_note(note_id: String, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let mut notes = load_notes(&s.storage_path);
-    notes.retain(|n| n.id != note_id);
-    store_notes(&s.storage_path, &notes)
+    delete_note_file(&s.storage_path, &note_id)
 }
 
 #[tauri::command]
@@ -127,20 +177,18 @@ fn create_new_note(title: String, settings: State<AppState>) -> Result<Note, Str
     };
 
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let mut notes = load_notes(&s.storage_path);
-    notes.push(note.clone());
-    store_notes(&s.storage_path, &notes)?;
+    write_note(&s.storage_path, &note)?;
     Ok(note)
 }
 
 #[tauri::command]
 fn rename_note(note_id: String, new_title: String, settings: State<AppState>) -> Result<(), String> {
     let s = settings.settings.lock().map_err(|e| e.to_string())?;
-    let mut notes = load_notes(&s.storage_path);
-    if let Some(note) = notes.iter_mut().find(|n| n.id == note_id) {
-        note.title = new_title;
-    }
-    store_notes(&s.storage_path, &notes)
+    let path = note_file_path(&s.storage_path, &note_id);
+    let Ok(contents) = fs::read_to_string(&path) else { return Ok(()) };
+    let Ok(mut note) = serde_json::from_str::<Note>(&contents) else { return Ok(()) };
+    note.title = new_title;
+    write_note(&s.storage_path, &note)
 }
 
 fn import_file_impl(path: String, settings: &Mutex<AppSettings>) -> Result<Note, String> {
@@ -165,9 +213,7 @@ fn import_file_impl(path: String, settings: &Mutex<AppSettings>) -> Result<Note,
     };
 
     let mut s = settings.lock().map_err(|e| e.to_string())?;
-    let mut notes = load_notes(&s.storage_path);
-    notes.push(note.clone());
-    store_notes(&s.storage_path, &notes)?;
+    write_note(&s.storage_path, &note)?;
 
     if let Some(parent) = file_path.parent() {
         s.last_import_export_dir = Some(parent.to_string_lossy().into_owned());
@@ -1129,5 +1175,88 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(err, "Could not read file as text");
+    }
+
+    #[test]
+    fn migrates_legacy_single_file_notes_into_per_note_files() {
+        let dir = TempDir::new().unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let legacy = vec![
+            Note { id: "a".into(), title: "A".into(), content: "one".into(), created_at: 1, private: false },
+            Note { id: "b".into(), title: "B".into(), content: "two".into(), created_at: 2, private: true },
+        ];
+        std::fs::write(&notes_path, serde_json::to_string_pretty(&legacy).unwrap()).unwrap();
+
+        let loaded = load_notes(&notes_path.to_string_lossy());
+
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].id, "a");
+        assert_eq!(loaded[1].id, "b");
+        assert!(dir.path().join("notes").join("a.json").exists());
+        assert!(dir.path().join("notes").join("b.json").exists());
+        // the legacy file is preserved as a backup, not deleted
+        assert!(dir.path().join("notes.json.bak").exists());
+        assert!(!notes_path.exists());
+    }
+
+    #[test]
+    fn load_notes_orders_by_created_at_regardless_of_write_order() {
+        let dir = TempDir::new().unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let state = test_state_with_storage(&notes_path);
+
+        let later = Note { id: "later".into(), title: "Later".into(), content: "".into(), created_at: 200, private: false };
+        let earlier = Note { id: "earlier".into(), title: "Earlier".into(), content: "".into(), created_at: 100, private: false };
+        write_note(&state.settings.lock().unwrap().storage_path, &later).unwrap();
+        write_note(&state.settings.lock().unwrap().storage_path, &earlier).unwrap();
+
+        let loaded = load_notes(&notes_path.to_string_lossy());
+        assert_eq!(loaded.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), vec!["earlier", "later"]);
+    }
+
+    #[test]
+    fn save_note_only_touches_its_own_file() {
+        let dir = TempDir::new().unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let path = notes_path.to_string_lossy().into_owned();
+
+        let a = Note { id: "a".into(), title: "A".into(), content: "one".into(), created_at: 1, private: false };
+        let b = Note { id: "b".into(), title: "B".into(), content: "two".into(), created_at: 2, private: false };
+        write_note(&path, &a).unwrap();
+        write_note(&path, &b).unwrap();
+
+        let b_file = note_file_path(&path, "b");
+        let before = std::fs::metadata(&b_file).unwrap().modified().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        let a_edited = Note { content: "one edited".into(), ..a.clone() };
+        write_note(&path, &a_edited).unwrap();
+
+        let after = std::fs::metadata(&b_file).unwrap().modified().unwrap();
+        assert_eq!(before, after, "editing note a must not touch note b's file");
+
+        let loaded = load_notes(&path);
+        let stored_a = loaded.iter().find(|n| n.id == "a").unwrap();
+        assert_eq!(stored_a.content, "one edited");
+    }
+
+    #[test]
+    fn delete_note_removes_only_that_notes_file() {
+        let dir = TempDir::new().unwrap();
+        let notes_path = dir.path().join("notes.json");
+        let path = notes_path.to_string_lossy().into_owned();
+
+        let a = Note { id: "a".into(), title: "A".into(), content: "one".into(), created_at: 1, private: false };
+        let b = Note { id: "b".into(), title: "B".into(), content: "two".into(), created_at: 2, private: false };
+        write_note(&path, &a).unwrap();
+        write_note(&path, &b).unwrap();
+
+        delete_note_file(&path, "a").unwrap();
+
+        let loaded = load_notes(&path);
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "b");
+        // deleting an already-gone note is a no-op, not an error
+        assert!(delete_note_file(&path, "a").is_ok());
     }
 }

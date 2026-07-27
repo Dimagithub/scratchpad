@@ -402,9 +402,10 @@ export default function App() {
   // Live-rendered, sanitized markdown for the preview pane. Never render the raw
   // marked() output directly — always run it through DOMPurify.
   const previewHtml = useMemo(() => {
+    if (!showPreview) return "";
     const raw = marked.parse(content, { async: false }) as string;
     return DOMPurify.sanitize(raw);
-  }, [content]);
+  }, [content, showPreview]);
 
   const runValidate = () => setLintResults(lintMarkdown(content));
 

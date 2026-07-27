@@ -4,6 +4,12 @@
 > the `macos-private-api` Cargo feature. This relies on a private Apple API, so
 > the app **cannot be distributed via the Mac App Store** — DMG distribution only.
 
+> Builds described here are currently **ad-hoc signed** (no Developer ID), which
+> means Screen Recording permission has to be re-granted on every reinstall. See
+> [`mac-signing-notarization.html`](./mac-signing-notarization.html) (open in a
+> browser) for the one-time Apple Developer Program setup that fixes this, and
+> the env vars to export before `npm run tauri:build` once you have it.
+
 ## Prerequisites
 
 - Mac with Xcode command line tools (`xcode-select --install`)

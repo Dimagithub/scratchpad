@@ -8,6 +8,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build && rm -rf src-tauri/target/release/bundle/macos/ScratchPad.app",
+    "install:local": "scripts/install-local.sh",
+    "build:install": "npm run tauri:build && npm run install:local",
     "test": "playwright test",
     "test:rust": "cd src-tauri && cargo test --lib"
   },
