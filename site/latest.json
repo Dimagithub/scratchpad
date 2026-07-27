@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "notes": "Faster autosave for large notes; markdown preview no longer re-parses on every keystroke when closed",
+  "version": "1.1.1",
+  "notes": "Fixes the repeated Screen Recording permission prompt (stable signing identity across builds)",
   "pub_date": "2026-07-27T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
@@ -8,8 +8,8 @@
       "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.0.0/ScratchPad_0.1.0_x64-setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMk1VYXBiNGJ4U21WWXgwYkpLSGkxemtTbkNoSWN1MGg3M2NUTEZrQzZTQkFzT3Z1a0IyK25RU2tUL1BIdFUzemdoaFBVaXdlZ3o4V1RtZW4vS0R2THcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTcyNzU2CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6Ckk5VGpzSXBrMHA2MmNHUGgwTFJ3M0hrNHVtaGZEaXoyUU1xVzl6RVFDbS9kaWtDREpJUEJObjJINUsrSXZYeHd5SjhmaHpTZmZjd0VPdEJBRS8wVkFBPT0K",
-      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.1.0/ScratchPad.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVURGlkOTdvSzdEMk96Wk9LTzVHenpEeEU4RFdSdldVRW1QbXA3SXg3cW4wZUtodUszZ2JzWmFtSzBhYkU4aUhwY0x6eit3aFNxdE1nVmttbUV4bjJTaFNoZjdNenhRNWdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTc1NTg2CWZpbGU6U2NyYXRjaFBhZC5hcHAudGFyLmd6CmdrRm5NMjZNQWczWGhCOGswV0gwRTB4SGRuWVQyK01VUlpXOWxCREFXTExPNmR4T1RVOUtuQmF4N21LdzdRdEs1dW5QcGlxdDNHVDBxSWg3TnFUQUF3PT0K",
+      "url": "https://github.com/Dimagithub/scratchpad/releases/download/v1.1.1/ScratchPad.app.tar.gz"
     }
   }
 }
