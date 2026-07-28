@@ -370,27 +370,36 @@ fn copy_png_to_clipboard(path: &std::path::Path) -> Result<(), String> {
     }
 }
 
+// `screencapture -i` blocks until the user drags a selection or presses Esc --
+// anywhere from instant to indefinite. Run it on a blocking-pool thread via
+// spawn_blocking rather than inline in the command, so waiting on the user
+// can't stall the async runtime and freeze the rest of the app (the whole
+// window would beachball for as long as the user took to select a region).
 #[tauri::command]
-fn take_screenshot() -> Result<Option<Screenshot>, String> {
+async fn take_screenshot() -> Result<Option<Screenshot>, String> {
     #[cfg(target_os = "macos")]
     {
-        let dir = screenshots_dir();
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-        let path = dir.join(format!("shot-{}.png", now));
-        // -i: interactive region/window selection. User can press Esc to cancel.
-        std::process::Command::new("screencapture")
-            .args(["-i", &path.to_string_lossy()])
-            .status()
-            .map_err(|e| e.to_string())?;
-        if !path.exists() {
-            return Ok(None); // cancelled
-        }
-        copy_png_to_clipboard(&path)?;
-        Ok(read_screenshot(&path))
+        tauri::async_runtime::spawn_blocking(|| {
+            let dir = screenshots_dir();
+            fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            let path = dir.join(format!("shot-{}.png", now));
+            // -i: interactive region/window selection. User can press Esc to cancel.
+            std::process::Command::new("screencapture")
+                .args(["-i", &path.to_string_lossy()])
+                .status()
+                .map_err(|e| e.to_string())?;
+            if !path.exists() {
+                return Ok(None); // cancelled
+            }
+            copy_png_to_clipboard(&path)?;
+            Ok(read_screenshot(&path))
+        })
+        .await
+        .map_err(|e| e.to_string())?
     }
     #[cfg(not(target_os = "macos"))]
     {
