@@ -80,8 +80,12 @@
          class="btn">⬇ Download for Mac</a>
       <p class="platform">macOS · Apple Silicon · v1.1.2</p>
       <div class="install-note">
-        After dragging to Applications, macOS may block the app.<br>
-        Open Terminal and run:<br><br>
+        macOS may say the DMG "cannot be opened because Apple cannot check it
+        for malicious software" — click <b>Done</b> (not Move to Trash), then
+        in Terminal run:<br><br>
+        <code>xattr -d com.apple.quarantine ~/Downloads/ScratchPad_*.dmg</code><br><br>
+        Open the DMG again and drag ScratchPad to Applications. If macOS
+        blocks the app itself next, run:<br><br>
         <code>xattr -cr /Applications/ScratchPad.app</code><br><br>
         Then open the app normally.
       </div>
